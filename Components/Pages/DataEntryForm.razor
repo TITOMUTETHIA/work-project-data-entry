@@ -1,0 +1,189 @@
+@page "/dataentry"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<h3 class="text-primary mb-4">📑 Saved Work Tickets</h3>
+
+@if (tickets == null || tickets.Count == 0)
+{
+    <div class="alert alert-info">No work tickets have been saved yet.</div>
+}
+else if (editingTicketNumber != null)
+{
+    <div class="card p-4 mb-4">
+        <h4>Edit Work Ticket: @editingTicketNumber</h4>
+        <form>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Cost Centre</label>
+                    <input type="text" class="form-control" @bind="editingTicket!.CostCentre" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Activity</label>
+                    <input type="text" class="form-control" @bind="editingTicket.Activity" />
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Operator Name</label>
+                    <input type="text" class="form-control" @bind="editingTicket.OperatorName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Number of Operators</label>
+                    <input type="number" class="form-control" @bind="editingTicket.NumOperators" />
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Start Date/Time</label>
+                    <input type="datetime-local" class="form-control" @bind="editingTicket.StartDateTime" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">End Date/Time</label>
+                    <input type="datetime-local" class="form-control" @bind="editingTicket.EndDateTime" />
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Quantity In</label>
+                    <input type="number" class="form-control" @bind="editingTicket.QuantityIn" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Quantity Out</label>
+                    <input type="number" class="form-control" @bind="editingTicket.QuantityOut" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Material Used</label>
+                    <input type="text" class="form-control" @bind="editingTicket.MaterialUsed" />
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="button" class="btn btn-success" @onclick="SaveChanges">Save Changes</button>
+                <button type="button" class="btn btn-secondary ms-2" @onclick="CancelEdit">Cancel</button>
+            </div>
+        </form>
+    </div>
+}
+else
+{
+    <table class="table table-striped table-bordered shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>Ticket #</th>
+                <th>Cost Centre</th>
+                <th>Activity</th>
+                <th>Operator</th>
+                <th>Num Operators</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Qty In</th>
+                <th>Qty Out</th>
+                <th>Material Used</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in tickets)
+            {
+                <tr>
+                    <td>@t.TicketNumber</td>
+                    <td>@t.CostCentre</td>
+                    <td>@t.Activity</td>
+                    <td>@t.OperatorName</td>
+                    <td>@t.NumOperators</td>
+                    <td>@t.StartDateTime.ToString("g")</td>
+                    <td>@t.EndDateTime.ToString("g")</td>
+                    <td>@t.QuantityIn</td>
+                    <td>@t.QuantityOut</td>
+                    <td>@t.MaterialUsed</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditTicket(t.TicketNumber)">Edit</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<WorkTicket> tickets = new();
+    private string? editingTicketNumber = null;
+    private WorkTicket? editingTicket = null;
+
+    protected override void OnInitialized()
+    {
+        // TODO: Replace with EF Core DB fetch
+        tickets = new List<WorkTicket>
+        {
+            //new WorkTicket { TicketNumber="88777", CostCentre="Manual", Activity="FOLDING", OperatorName="AMary", NumOperators=3, StartDateTime=DateTime.Now.AddHours(-5), EndDateTime=DateTime.Now.AddHours(-1), QuantityIn=200, QuantityOut=190, MaterialUsed="MATT" }
+        };
+    }
+
+    private void EditTicket(string ticketNumber)
+    {
+        var ticket = tickets.FirstOrDefault(t => t.TicketNumber == ticketNumber);
+        if (ticket != null)
+        {
+            editingTicketNumber = ticketNumber;
+            // Create a copy for editing
+            editingTicket = new WorkTicket
+            {
+                TicketNumber = ticket.TicketNumber,
+                CostCentre = ticket.CostCentre,
+                Activity = ticket.Activity,
+                OperatorName = ticket.OperatorName,
+                NumOperators = ticket.NumOperators,
+                StartDateTime = ticket.StartDateTime,
+                StartCounter = ticket.StartCounter,
+                EndDateTime = ticket.EndDateTime,
+                EndCounter = ticket.EndCounter,
+                QuantityIn = ticket.QuantityIn,
+                QuantityOut = ticket.QuantityOut,
+                MaterialUsed = ticket.MaterialUsed
+            };
+        }
+    }
+
+    private void SaveChanges()
+    {
+        if (editingTicket != null && editingTicketNumber != null)
+        {
+            var ticket = tickets.FirstOrDefault(t => t.TicketNumber == editingTicketNumber);
+            if (ticket != null)
+            {
+                ticket.CostCentre = editingTicket.CostCentre;
+                ticket.Activity = editingTicket.Activity;
+                ticket.OperatorName = editingTicket.OperatorName;
+                ticket.NumOperators = editingTicket.NumOperators;
+                ticket.StartDateTime = editingTicket.StartDateTime;
+                ticket.EndDateTime = editingTicket.EndDateTime;
+                ticket.QuantityIn = editingTicket.QuantityIn;
+                ticket.QuantityOut = editingTicket.QuantityOut;
+                ticket.MaterialUsed = editingTicket.MaterialUsed;
+            }
+        }
+        CancelEdit();
+    }
+
+    private void CancelEdit()
+    {
+        editingTicketNumber = null;
+        editingTicket = null;
+    }
+
+    public class WorkTicket
+    {
+        public string? TicketNumber { get; set; }
+        public string? CostCentre { get; set; }
+        public string? Activity { get; set; }
+        public string? OperatorName { get; set; }
+        public int NumOperators { get; set; }
+        public DateTime StartDateTime { get; set; }
+        public int StartCounter { get; set; }
+        public DateTime EndDateTime { get; set; }
+        public int EndCounter { get; set; }
+        public int QuantityIn { get; set; }
+        public int QuantityOut { get; set; }
+        public string? MaterialUsed { get; set; }
+    }
+}

@@ -1,0 +1,41 @@
+{
+  "Files": [
+    {
+      "Id": "/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/scopedcss/projectbundle/WorkTicketApp.bundle.scp.css",
+      "PackagePath": "staticwebassets/WorkTicketApp.bundle.scp.css"
+    },
+    {
+      "Id": "/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/wwwroot/app.css",
+      "PackagePath": "staticwebassets/app.css"
+    },
+    {
+      "Id": "/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/wwwroot/bootstrap/bootstrap.min.css",
+      "PackagePath": "staticwebassets/bootstrap/bootstrap.min.css"
+    },
+    {
+      "Id": "/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/wwwroot/bootstrap/bootstrap.min.css.map",
+      "PackagePath": "staticwebassets/bootstrap/bootstrap.min.css.map"
+    },
+    {
+      "Id": "/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/wwwroot/favicon.png",
+      "PackagePath": "staticwebassets/favicon.png"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.WorkTicketApp.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.build.WorkTicketApp.props",
+      "PackagePath": "build\\WorkTicketApp.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.WorkTicketApp.props",
+      "PackagePath": "buildMultiTargeting\\WorkTicketApp.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.WorkTicketApp.props",
+      "PackagePath": "buildTransitive\\WorkTicketApp.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

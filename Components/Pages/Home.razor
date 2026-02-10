@@ -1,0 +1,121 @@
+﻿@page "/"
+@inherits LayoutComponentBase
+
+<div class="page">
+    <main>
+        <div class="top-row px-4">
+            <h2 class="text-primary mb-4">Chrome Partners Data Entry</h2>
+        </div>
+
+        <article class="px-4 mt-4">
+            <div class="card shadow-sm p-4">
+                <h3 class="text-primary mb-3">📊 Enter Work Ticket Data</h3>
+                <p class="text-muted">
+                    Welcome to Chrome Partners Data Entry. Please fill in the required fields below to record operational data.
+                </p>
+
+                <EditForm Model="@ticket" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Work Ticket Number</label>
+                            <InputText @bind-Value="ticket.TicketNumber" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cost Centre</label>
+                            <InputText @bind-Value="ticket.CostCentre" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Activity</label>
+                            <InputText @bind-Value="ticket.Activity" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Operator Name</label>
+                            <InputText @bind-Value="ticket.OperatorName" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Number of Operators</label>
+                            <InputNumber @bind-Value="ticket.NumOperators" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Material Used</label>
+                            <InputText @bind-Value="ticket.MaterialUsed" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date & Time</label>
+                            <InputDate @bind-Value="ticket.StartDateTime" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Date & Time</label>
+                            <InputDate @bind-Value="ticket.EndDateTime" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Start Counter</label>
+                            <InputNumber @bind-Value="ticket.StartCounter" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Counter</label>
+                            <InputNumber @bind-Value="ticket.EndCounter" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Quantity In</label>
+                            <InputNumber @bind-Value="ticket.QuantityIn" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quantity Out</label>
+                            <InputNumber @bind-Value="ticket.QuantityOut" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="submit" class="btn btn-success me-2">💾 Save</button>
+                        <button type="reset" class="btn btn-secondary">🧹 Clear</button>
+                    </div>
+                </EditForm>
+            </div>
+        </article>
+    </main>
+</div>
+
+@code {
+    private WorkTicket ticket = new();
+
+    private void HandleValidSubmit()
+    {
+        // TODO: Save to SQL via EF Core
+        Console.WriteLine("Ticket saved!");
+    }
+
+    public class WorkTicket
+    {
+        public string? TicketNumber { get; set; }
+        public string? CostCentre { get; set; }
+        public string? Activity { get; set; }
+        public string? OperatorName { get; set; }
+        public int NumOperators { get; set; }
+        public DateTime StartDateTime { get; set; }
+        public int StartCounter { get; set; }
+        public DateTime EndDateTime { get; set; }
+        public int EndCounter { get; set; }
+        public int QuantityIn { get; set; }
+        public int QuantityOut { get; set; }
+        public string? MaterialUsed { get; set; }
+    }
+}

@@ -1,0 +1,62 @@
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/appsettings.Development.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/appsettings.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/WorkTicketApp.staticwebassets.runtime.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/WorkTicketApp
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/WorkTicketApp.deps.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/WorkTicketApp.runtimeconfig.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/WorkTicketApp.dll
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/bin/Debug/net8.0/WorkTicketApp.pdb
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.GeneratedMSBuildEditorConfig.editorconfig
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.AssemblyInfoInputs.cache
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.AssemblyInfo.cs
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.csproj.CoreCompileInputs.cache
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.MvcApplicationPartsAssemblyInfo.cache
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets.build.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets.development.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets/msbuild.WorkTicketApp.Microsoft.AspNetCore.StaticWebAssets.props
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets/msbuild.build.WorkTicketApp.props
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.WorkTicketApp.props
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.WorkTicketApp.props
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/staticwebassets.pack.json
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/scopedcss/Components/Layout/MainLayout.razor.rz.scp.css
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/scopedcss/Components/Layout/NavMenu.razor.rz.scp.css
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/scopedcss/bundle/WorkTicketApp.styles.css
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/scopedcss/projectbundle/WorkTicketApp.bundle.scp.css
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.dll
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/refint/WorkTicketApp.dll
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.pdb
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/WorkTicketApp.genruntimeconfig.cache
+/home/bigfish/Documents/Data Entry work ticket forms/WorkTicketApp/obj/Debug/net8.0/ref/WorkTicketApp.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\appsettings.Development.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\appsettings.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.staticwebassets.runtime.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.staticwebassets.endpoints.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.exe
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.deps.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.runtimeconfig.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\bin\Debug\net8.0\WorkTicketApp.pdb
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\rpswa.dswa.cache.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.AssemblyInfoInputs.cache
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.AssemblyInfo.cs
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.csproj.CoreCompileInputs.cache
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.sourcelink.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\rjimswa.dswa.cache.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\scopedcss\Components\Layout\MainLayout.razor.rz.scp.css
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\scopedcss\Components\Layout\NavMenu.razor.rz.scp.css
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\scopedcss\bundle\WorkTicketApp.styles.css
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\scopedcss\projectbundle\WorkTicketApp.bundle.scp.css
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\staticwebassets.build.json.cache
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\staticwebassets.development.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\staticwebassets.build.endpoints.json
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\swae.build.ex.cache
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\refint\WorkTicketApp.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.pdb
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\WorkTicketApp.genruntimeconfig.cache
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\code\Dataentryform\WorkTicketApp\obj\Debug\net8.0\ref\WorkTicketApp.dll
