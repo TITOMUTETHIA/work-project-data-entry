@@ -97,7 +97,10 @@ else
                     <td>@t.QuantityOut</td>
                     <td>@t.MaterialUsed</td>
                     <td>
-                        <button class="btn btn-sm btn-primary" @onclick="() => EditTicket(t.TicketNumber)">Edit</button>
+                        @if (t.TicketNumber is not null)
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="() => EditTicket(t.TicketNumber)">Edit</button>
+                        }
                     </td>
                 </tr>
             }
@@ -119,8 +122,10 @@ else
         };
     }
 
-    private void EditTicket(string ticketNumber)
+    private void EditTicket(string? ticketNumber)
     {
+        if (ticketNumber == null) return;
+        
         var ticket = tickets.FirstOrDefault(t => t.TicketNumber == ticketNumber);
         if (ticket != null)
         {
