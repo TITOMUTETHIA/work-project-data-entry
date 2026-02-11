@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj": {}
+    "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code copy\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj": {
+    "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code copy\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj",
+        "projectUniqueName": "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code copy\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj",
         "projectName": "WorkTicketApp",
-        "projectPath": "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj",
+        "projectPath": "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code copy\\code\\Dataentryform\\WorkTicketApp\\WorkTicketApp.csproj",
         "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code\\Dataentryform\\WorkTicketApp\\obj\\",
+        "outputPath": "C:\\Users\\ADMIN\\OneDrive - Chrome Partners\\Desktop\\tito\\code copy\\code\\Dataentryform\\WorkTicketApp\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config"
