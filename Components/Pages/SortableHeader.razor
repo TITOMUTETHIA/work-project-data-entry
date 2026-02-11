@@ -1,0 +1,21 @@
+@typeparam TItem where TItem : class
+
+<th @onclick="HandleSort" style="cursor: pointer;">
+    @ChildContent @ParentGrid.GetSortIcon(ColumnName)
+</th>
+
+@code {
+    [CascadingParameter(Name = "Grid")]
+    public DataGrid<TItem> ParentGrid { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string ColumnName { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private async Task HandleSort()
+    {
+        await ParentGrid.SortByAsync(ColumnName);
+    }
+}

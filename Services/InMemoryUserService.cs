@@ -1,56 +1,110 @@
+using System.Collections.Concurrent;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using WorkTicketApp.Data;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using WorkTicketApp.Models;
 
 namespace WorkTicketApp.Services;
 
-public sealed class InMemoryUserService(WorkTicketContext context) : IUserService
+public class InMemoryUserService : IUserService
 {
-    public bool Register(string username, string password)
+    // Use a thread-safe dictionary to store users.
+    // This service is registered as a singleton, so this dictionary will persist
+    // for the lifetime of the application.
+    private readonly ConcurrentDictionary<string, (string PasswordHash, string Role)> _users = new();
+
+    public bool Register(string username, string password, string role = "User")
     {
-        try
-        {
-            // Check if user already exists
-            var existingUser = context.Users
-                .FirstOrDefault(u => u.Username == username.ToLowerInvariant());
-            
-            if (existingUser != null)
-                return false;
+        // Hash the password securely using BCrypt.
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
-            var user = new User
-            {
-                Username = username.ToLowerInvariant(),
-                Password = password,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            context.Users.Add(user);
-            context.SaveChanges();
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        // TryAdd is a thread-safe way to add a user if they don't already exist.
+        return _users.TryAdd(username, (passwordHash, role));
     }
 
-    public ClaimsPrincipal? ValidateCredentials(string? username, string? password)
+    public ClaimsPrincipal? ValidateCredentials(string username, string password)
     {
-        if (string.IsNullOrWhiteSpace(username) || password == null)
-            return null;
-
-        var user = context.Users
-            .FirstOrDefault(u => u.Username == username.ToLowerInvariant());
-
-        if (user != null && user.Password == password)
+        if (_users.TryGetValue(username, out var userInfo) && BCrypt.Net.BCrypt.Verify(password, userInfo.PasswordHash))
         {
-            var claims = new[] { new Claim(ClaimTypes.Name, username) };
-            var identity = new ClaimsIdentity(claims, "Cookies");
+            var claims = new[] 
+            { 
+                new Claim(ClaimTypes.Name, username),
+                new Claim(ClaimTypes.Role, userInfo.Role)
+            };
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             return new ClaimsPrincipal(identity);
         }
 
         return null;
     }
-}
 
+    public PagedResult<UserDto> GetUsers(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true)
+    {
+        var query = _users
+            .Select(u => new UserDto { Username = u.Key, Role = u.Value.Role });
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(u => u.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        IOrderedEnumerable<UserDto> orderedQuery;
+        switch (sortBy?.ToLowerInvariant())
+        {
+            case "role":
+                orderedQuery = sortAscending ? query.OrderBy(u => u.Role) : query.OrderByDescending(u => u.Role);
+                break;
+            case "username":
+            default:
+                orderedQuery = sortAscending ? query.OrderBy(u => u.Username) : query.OrderByDescending(u => u.Username);
+                break;
+        }
+
+        var pagedUsers = orderedQuery
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        // The total count should be based on the filtered query before paging.
+        return new PagedResult<UserDto> { Items = pagedUsers, TotalCount = query.Count() };
+    }
+
+    public List<UserDto> GetAllUsers(string? searchTerm = null, string? sortBy = null, bool sortAscending = true)
+    {
+        var query = _users
+            .Select(u => new UserDto { Username = u.Key, Role = u.Value.Role });
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(u => u.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        IOrderedEnumerable<UserDto> orderedQuery;
+        switch (sortBy?.ToLowerInvariant())
+        {
+            case "role":
+                orderedQuery = sortAscending ? query.OrderBy(u => u.Role) : query.OrderByDescending(u => u.Role);
+                break;
+            case "username":
+            default:
+                orderedQuery = sortAscending ? query.OrderBy(u => u.Username) : query.OrderByDescending(u => u.Username);
+                break;
+        }
+
+        return orderedQuery.ToList();
+    }
+
+    public bool DeleteUser(string username)
+    {
+        return _users.TryRemove(username, out _);
+    }
+
+    public bool UpdateUserRole(string username, string role)
+    {
+        if (_users.TryGetValue(username, out var userInfo))
+        {
+            _users[username] = (userInfo.PasswordHash, role);
+            return true;
+        }
+        return false;
+    }
+}

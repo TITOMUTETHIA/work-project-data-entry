@@ -4,9 +4,9 @@ namespace WorkTicketApp.Services;
 
 public interface IWorkTicketService
 {
-    Task<List<WorkTicket>> GetAllTicketsAsync();
-    Task<WorkTicket?> GetTicketByNumberAsync(string ticketNumber);
-    Task<WorkTicket> CreateTicketAsync(WorkTicket ticket);
-    Task<WorkTicket> UpdateTicketAsync(WorkTicket ticket);
-    Task<bool> DeleteTicketAsync(int id);
+    Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null);
+    Task<WorkTicket> CreateWorkTicketAsync(WorkTicket workTicket);
+    Task<WorkTicket?> GetTicketByIdAsync(int id);
+    Task UpdateTicketAsync(WorkTicket ticket);
+    Task DeleteTicketAsync(int id);
 }

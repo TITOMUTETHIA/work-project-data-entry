@@ -1,0 +1,63 @@
+@page "/tickets"
+@using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@attribute [Authorize]
+@inject IWorkTicketService WorkTicketService
+
+<PageTitle>Work Tickets</PageTitle>
+
+<h1>Work Tickets</h1>
+
+<p>This page lists all submitted work tickets.</p>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search tickets..." @bind="_searchTerm" @onkeyup.Enter="SearchTickets" />
+            <button class="btn btn-primary" @onclick="SearchTickets">Search</button>
+            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
+        </div>
+    </div>
+</div>
+
+<DataGrid @ref="_grid" TItem="WorkTicket" DataProvider="GetWorkTicketData" InitialSortColumn="CreatedAt">
+    <HeaderTemplate>
+        <tr>
+            <SortableHeader TItem="WorkTicket" ColumnName="TicketNumber">Ticket #</SortableHeader>
+            <SortableHeader TItem="WorkTicket" ColumnName="Activity">Activity</SortableHeader>
+            <SortableHeader TItem="WorkTicket" ColumnName="OperatorName">Operator</SortableHeader>
+            <SortableHeader TItem="WorkTicket" ColumnName="CreatedAt">Date Created</SortableHeader>
+        </tr>
+    </HeaderTemplate>
+    <RowTemplate>
+        <tr>
+            <td>@context.TicketNumber</td>
+            <td>@context.Activity</td>
+            <td>@context.OperatorName</td>
+            <td>@context.CreatedAt.ToShortDateString()</td>
+        </tr>
+    </RowTemplate>
+</DataGrid>
+
+@code {
+    private DataGrid<WorkTicket>? _grid;
+    private string? _searchTerm;
+
+    private Task<PagedResult<WorkTicket>> GetWorkTicketData(int page, int pageSize, string sortBy, bool sortAscending)
+    {
+        return WorkTicketService.GetWorkTicketsAsync(page, pageSize, _searchTerm, sortBy, sortAscending);
+    }
+
+    private async Task SearchTickets()
+    {
+        // Refresh the grid to apply the search term
+        await _grid!.RefreshDataAsync();
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        _searchTerm = string.Empty;
+        await _grid!.RefreshDataAsync();
+    }
+}

@@ -1,0 +1,111 @@
+@typeparam TItem where TItem : class
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <CascadingValue Value="this" Name="Grid">
+            <thead>
+                @HeaderTemplate
+            </thead>
+        </CascadingValue>
+        <tbody>
+            @if (_items is null)
+            {
+                <tr><td colspan="100"><p><em>Loading...</em></p></td></tr>
+            }
+            else if (!_items.Any())
+            {
+                <tr><td colspan="100"><p>No items found.</p></td></tr>
+            }
+            else
+            {
+                foreach (var item in _items)
+                {
+                    @RowTemplate(item)
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (_totalPages > 1)
+{
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <span>Page @_currentPage of @_totalPages</span>
+        <nav aria-label="DataGrid pagination">
+            <ul class="pagination mb-0">
+                <li class="page-item @(_currentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => GoToPageAsync(_currentPage - 1)">Previous</button>
+                </li>
+                <li class="page-item @(_currentPage >= _totalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => GoToPageAsync(_currentPage + 1)">Next</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment HeaderTemplate { get; set; } = default!;
+    [Parameter] public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+    [Parameter] public Func<int, int, string, bool, Task<PagedResult<TItem>>> DataProvider { get; set; } = default!;
+    [Parameter] public int PageSize { get; set; } = 5;
+    [Parameter] public string InitialSortColumn { get; set; } = "Username";
+
+    private List<TItem>? _items;
+    private int _currentPage = 1;
+    private int _totalItems = 0;
+    private string _sortBy = "";
+    private bool _sortAscending = true;
+
+    public string CurrentSortBy => _sortBy;
+    public bool IsSortAscending => _sortAscending;
+
+    private int _totalPages => (int)Math.Ceiling(_totalItems / (double)PageSize);
+
+    protected override void OnInitialized() => _sortBy = InitialSortColumn;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var result = await DataProvider(_currentPage, PageSize, _sortBy, _sortAscending);
+        _items = result.Items;
+        _totalItems = result.TotalCount;
+        StateHasChanged();
+    }
+
+    private async Task GoToPageAsync(int pageNumber)
+    {
+        if (pageNumber >= 1 && pageNumber <= _totalPages)
+        {
+            _currentPage = pageNumber;
+            await LoadDataAsync();
+        }
+    }
+
+    public async Task SortByAsync(string columnName)
+    {
+        _sortAscending = _sortBy == columnName ? !_sortAscending : true;
+        _sortBy = columnName;
+        _currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    public MarkupString GetSortIcon(string columnName)
+    {
+        if (_sortBy != columnName) return (MarkupString)string.Empty;
+        return _sortAscending ? new MarkupString("<i class=\"bi bi-sort-up\"></i>") : new MarkupString("<i class=\"bi bi-sort-down\"></i>");
+    }
+
+    public async Task RefreshDataAsync()
+    {
+        _currentPage = 1;
+        await LoadDataAsync();
+    }
+}

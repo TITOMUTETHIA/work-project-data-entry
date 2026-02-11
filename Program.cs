@@ -1,17 +1,15 @@
 using WorkTicketApp.Components;
 using WorkTicketApp.Services;
 using WorkTicketApp.Authentication;
-using WorkTicketApp.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.EntityFrameworkCore;
 using WorkTicketApp.Models;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure database
-ConfigureDatabase(builder);
 
 // Configure services
 ConfigureServices(builder.Services);
@@ -19,26 +17,14 @@ ConfigureServices(builder.Services);
 var app = builder.Build();
 
 // Initialize database
-await InitializeDatabase(app);
+
+// Seed default admin user
+SeedUserData(app);
 
 // Configure middleware
 ConfigureMiddleware(app);
 
 await app.RunAsync();
-
-static void ConfigureDatabase(WebApplicationBuilder builder)
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Server=(localdb)\\mssqllocaldb;Database=WorkTicketAppDb;Trusted_Connection=true;";
-    
-    builder.Services.AddDbContext<WorkTicketContext>((sp, options) =>
-    {
-        options.UseSqlServer(connectionString);
-        // Log pending model changes warnings
-        options.ConfigureWarnings(w => 
-            w.Log(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-    });
-}
 
 static void ConfigureServices(IServiceCollection services)
 {
@@ -50,9 +36,10 @@ static void ConfigureServices(IServiceCollection services)
     services.AddHttpClient();
 
     // Application services
-    services.AddScoped<IWorkTicketService, WorkTicketService>();
-    services.AddScoped<IUserService, InMemoryUserService>();
+    services.AddSingleton<IWorkTicketService, InMemoryWorkTicketService>();
+    services.AddSingleton<IUserService, InMemoryUserService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
+    services.AddHttpContextAccessor();
 
     // Authentication & Authorization
     services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -68,11 +55,27 @@ static void ConfigureServices(IServiceCollection services)
     services.AddAuthorizationBuilder();
 }
 
-static async Task InitializeDatabase(WebApplication app)
+static void SeedUserData(WebApplication app)
 {
-    using var scope = app.Services.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<WorkTicketContext>();
-    await db.Database.MigrateAsync();
+    var config = app.Configuration.GetSection("AdminUser");
+    var username = config["Username"];
+    var password = config["Password"];
+
+    if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+    {
+        app.Logger.LogWarning("Admin user not configured in appsettings.json. Skipping seed.");
+        return;
+    }
+
+    // Since IUserService is a singleton, we can resolve it directly from the root provider.
+    var userService = app.Services.GetRequiredService<IUserService>();
+
+    // The Register method is idempotent for our use case because it won't
+    // add the user if they already exist.
+    if (userService.Register(username, password, "Admin"))
+    {
+        app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+    }
 }
 
 static void ConfigureMiddleware(WebApplication app)
@@ -108,44 +111,46 @@ static void ConfigureMiddleware(WebApplication app)
         .WithName("Register")
         .WithSummary("Register new user");
 
-    authGroup.MapPost("/logout", Logout)
+    authGroup.MapPost("/logout", (Delegate)Logout)
         .WithName("Logout")
         .WithSummary("Logout user")
         .RequireAuthorization();
 }
 
-async Task Login(HttpContext ctx, InMemoryUserService users, LoginDto creds)
+static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
 {
     if (creds?.Username == null || creds?.Password == null)
     {
-        ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
-        return;
+        return Results.Redirect("/login?error=MissingCredentials");
     }
 
     var principal = users.ValidateCredentials(creds.Username, creds.Password);
     if (principal is null)
     {
-        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        return;
+        return Results.Redirect("/login?error=InvalidCredentials");
     }
 
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-    ctx.Response.StatusCode = StatusCodes.Status200OK;
+    return Results.Redirect("/");
 }
 
-Task Register(IUserService users, LoginDto creds)
+static IResult Register(IUserService users, LoginDto creds)
 {
     if (creds?.Username == null || creds?.Password == null)
-        throw new ArgumentException("Username and password are required");
+    {
+        return Results.BadRequest("Username and password are required");
+    }
 
     if (!users.Register(creds.Username, creds.Password))
-        throw new InvalidOperationException("User already exists");
+    {
+        return Results.Conflict("User already exists");
+    }
 
-    return Task.CompletedTask;
+    return Results.Ok();
 }
 
-async Task Logout(HttpContext ctx)
+static async Task<IResult> Logout(HttpContext ctx)
 {
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    ctx.Response.StatusCode = StatusCodes.Status200OK;
+    return Results.Redirect("/login");
 }
