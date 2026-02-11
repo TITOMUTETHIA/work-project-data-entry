@@ -46,7 +46,7 @@ static void ConfigureServices(IServiceCollection services)
         .AddCookie(options =>
         {
             options.Cookie.Name = "WorkTicketAuth";
-            options.LoginPath = "/login";
+            options.LoginPath = "/account/login";
             options.LogoutPath = "/logout";
             options.SlidingExpiration = true;
             options.ExpireTimeSpan = TimeSpan.FromDays(7);
@@ -121,13 +121,13 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
 {
     if (creds?.Username == null || creds?.Password == null)
     {
-        return Results.Redirect("/login?error=MissingCredentials");
+        return Results.Redirect("/account/login?error=MissingCredentials");
     }
 
     var principal = users.ValidateCredentials(creds.Username, creds.Password);
     if (principal is null)
     {
-        return Results.Redirect("/login?error=InvalidCredentials");
+        return Results.Redirect("/account/login?error=InvalidCredentials");
     }
 
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
@@ -152,5 +152,5 @@ static IResult Register(IUserService users, LoginDto creds)
 static async Task<IResult> Logout(HttpContext ctx)
 {
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Redirect("/login");
+    return Results.Redirect("/account/login");
 }
