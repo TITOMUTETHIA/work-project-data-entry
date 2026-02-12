@@ -1,18 +1,22 @@
 ﻿@page "/"
-@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
 @inject IWorkTicketService TicketService
 @inject AuthenticationStateProvider AuthStateProvider
 
-<div class="page">
-    <main>
-        <div class="top-row px-4">
-            <h2 class="text-primary mb-4">Chrome Partners Data Entry</h2>
-        </div>
+<PageTitle>Data Entry</PageTitle>
 
-        <article class="px-4 mt-4">
-            <div class="card shadow-sm p-4">
-                <h3 class="text-primary mb-3">📊 Enter Work Ticket Data</h3>
-                <p class="text-muted">
+<h1>Chrome Partners Data Entry</h1>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                📋 Enter process track sheet
+            </div>
+            <div class="card-body">
+                <p class="card-text">
                     Welcome to Chrome Partners Data Entry. Please fill in the required fields below to record operational data.
                 </p>
 
@@ -95,13 +99,13 @@
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
-                        <button type="submit" class="btn btn-success me-2">💾 Save</button>
-                        <button type="reset" class="btn btn-secondary">🧹 Clear</button>
+                        <button type="submit" class="btn btn-primary me-2">💾 Save</button>
+                        <button type="button" class="btn btn-secondary" @onclick="ResetForm">🧹 Clear</button>
                     </div>
                 </EditForm>
             </div>
-        </article>
-    </main>
+        </div>
+    </div>
 </div>
 
 @code {
@@ -110,9 +114,7 @@
 
     protected override void OnInitialized()
     {
-        // Initialize dates to prevent validation issues with default (0001-01-01) values
-        ticket.StartDateTime = DateTime.Now;
-        ticket.EndDateTime = DateTime.Now;
+        ResetForm();
     }
 
     private async Task HandleValidSubmit()
@@ -127,9 +129,14 @@
         showSuccess = true;
         
         // Reset form for the next entry
-        ticket = new WorkTicket { StartDateTime = DateTime.Now, EndDateTime = DateTime.Now };
+        ResetForm();
         
         // Auto-hide success message after a few seconds
         _ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { showSuccess = false; StateHasChanged(); }));
+    }
+
+    private void ResetForm()
+    {
+        ticket = new WorkTicket { StartDateTime = DateTime.Now, EndDateTime = DateTime.Now };
     }
 }

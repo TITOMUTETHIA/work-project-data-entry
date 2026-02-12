@@ -329,6 +329,8 @@ C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\u4vlpuljnr-{0}-8inm30yfxf-8inm30yfxf.gz
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\xfwdt6evqu-{0}-2i0r6wwb69-2i0r6wwb69.gz
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\h60fmxqc2m-{0}-iz83ucvm53-iz83ucvm53.gz
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\qjya9djbrd-{0}-d37muzv7hy-d37muzv7hy.gz
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\vvk4nsg6ct-{0}-d37muzv7hy-d37muzv7hy.gz
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\staticwebassets.build.json
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\staticwebassets.build.json.cache
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\staticwebassets.development.json
@@ -340,5 +342,3 @@ C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\WorkTicketApp.pdb
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\WorkTicketApp.genruntimeconfig.cache
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\ref\WorkTicketApp.dll
-C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\qjya9djbrd-{0}-d37muzv7hy-d37muzv7hy.gz
-C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\compressed\vvk4nsg6ct-{0}-d37muzv7hy-d37muzv7hy.gz
