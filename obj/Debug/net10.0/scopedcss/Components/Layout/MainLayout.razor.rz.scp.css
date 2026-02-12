@@ -2,19 +2,21 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    font-family: "Roboto", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 main[b-vxssyt4gcv] {
     flex: 1;
+    background-color: #F6F1F1;
 }
 
 .sidebar[b-vxssyt4gcv] {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background-color: #146C94;
 }
 
 .top-row[b-vxssyt4gcv] {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background-color: #F6F1F1;
+    border-bottom: 1px solid #AFD3E2;
     justify-content: flex-end;
     height: 3.5rem;
     display: flex;
@@ -94,3 +96,69 @@ main[b-vxssyt4gcv] {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+main[b-vxssyt4gcv]  h1, main[b-vxssyt4gcv]  h2, main[b-vxssyt4gcv]  h3 {
+    color: #146C94;
+    font-weight: 700;
+}
+
+main[b-vxssyt4gcv]  p, main[b-vxssyt4gcv]  label, main[b-vxssyt4gcv]  .form-label {
+    font-weight: 300;
+    color: #212529;
+}
+
+main[b-vxssyt4gcv]  .btn-primary {
+    background-color: #19A7CE;
+    border-color: #19A7CE;
+    color: #F6F1F1;
+    font-weight: 500;
+}
+
+main[b-vxssyt4gcv]  .btn-primary:hover, main[b-vxssyt4gcv]  .btn-primary:active, main[b-vxssyt4gcv]  .btn-primary:focus {
+    background-color: #146C94;
+    border-color: #146C94;
+}
+
+main[b-vxssyt4gcv]  .btn-secondary {
+    background-color: #AFD3E2;
+    border-color: #AFD3E2;
+    color: #146C94;
+    font-weight: 500;
+}
+
+main[b-vxssyt4gcv]  .btn-secondary:hover, main[b-vxssyt4gcv]  .btn-secondary:active, main[b-vxssyt4gcv]  .btn-secondary:focus {
+    background-color: #19A7CE;
+    border-color: #19A7CE;
+    color: #F6F1F1;
+}
+
+main[b-vxssyt4gcv]  .form-control, main[b-vxssyt4gcv]  .form-select {
+    border: 1px solid #AFD3E2;
+    color: #146C94;
+    background-color: #ffffff;
+}
+
+main[b-vxssyt4gcv]  .form-control:focus, main[b-vxssyt4gcv]  .form-select:focus {
+    border-color: #19A7CE;
+    box-shadow: 0 0 0 0.25rem rgba(25, 167, 206, 0.25);
+    color: #146C94;
+}
+
+main[b-vxssyt4gcv]  .card {
+    border: 1px solid #AFD3E2;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(20, 108, 148, 0.1);
+}
+
+main[b-vxssyt4gcv]  .card-header {
+    background-color: #AFD3E2;
+    color: #146C94;
+    font-weight: 500;
+    border-bottom: 1px solid #19A7CE;
+}
+
+main[b-vxssyt4gcv]  .card-title {
+    color: #146C94;
+    font-weight: 700;
+}

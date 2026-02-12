@@ -1,0 +1,65 @@
+@page "/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Services
+@using WorkTicketApp.Models
+@attribute [Authorize]
+@inject IWorkTicketService WorkTicketService
+@inject IUserService UserService
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>Dashboard</h1>
+
+<div class="row mt-4">
+    <!-- Work Tickets Summary -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Work Tickets</div>
+            <div class="card-body">
+                <h5 class="card-title">Total Tickets</h5>
+                <p class="card-text display-4">@ticketCount</p>
+                <a href="work-tickets" class="btn btn-primary">View All</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Summary (Admin Only) -->
+    <AuthorizeView Roles="Admin">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">User Management</div>
+                <div class="card-body">
+                    <h5 class="card-title">Registered Users</h5>
+                    <p class="card-text display-4">@userCount</p>
+                    <a href="admin/users" class="btn btn-primary">Manage Users</a>
+                </div>
+            </div>
+        </div>
+    </AuthorizeView>
+
+    <!-- Quick Actions -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Quick Actions</div>
+            <div class="card-body">
+                <h5 class="card-title">New Entry</h5>
+                <p class="card-text">Create a new work ticket entry immediately.</p>
+                <a href="" class="btn btn-secondary">Create Ticket</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int ticketCount;
+    private int userCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ticketResult = await WorkTicketService.GetWorkTicketsAsync(1, 1, null, null, true);
+        ticketCount = ticketResult.TotalCount;
+
+        var userResult = await UserService.GetUsersAsync(1, 1);
+        userCount = userResult.TotalCount;
+    }
+}

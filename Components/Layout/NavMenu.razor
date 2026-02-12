@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
+﻿﻿@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -11,15 +11,21 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dashboard">
+                <i class="fa-solid fa-gauge" aria-hidden="true"></i> Dashboard
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> New Ticket
+                <i class="fa-solid fa-plus" aria-hidden="true"></i> New Ticket
             </NavLink>
         </div>
 
         <AuthorizeView>
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="tickets">
-                    <span class="bi bi-list-ul-nav-menu" aria-hidden="true"></span> Ticket List
+                <NavLink class="nav-link" href="work-tickets">
+                    <i class="fa-solid fa-list" aria-hidden="true"></i> Ticket List
                 </NavLink>
             </div>
         </AuthorizeView>
@@ -27,21 +33,21 @@
         <AuthorizeView Roles="Admin">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="admin/users">
-                    <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> User Management
+                    <i class="fa-solid fa-users" aria-hidden="true"></i> User Management
                 </NavLink>
             </div>
         </AuthorizeView>
 
         <AuthorizeView>
             <div class="nav-item px-3 text-white mt-3">
-                <span class="bi bi-person-fill" aria-hidden="true"></span>
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
                 <span class="ms-2">@context.User.Identity?.Name</span>
             </div>
             <div class="nav-item px-3">
                 <form action="/api/auth/logout" method="post">
                     <AntiforgeryToken />
                     <button type="submit" class="nav-link btn btn-link text-white">
-                        <span class="bi bi-box-arrow-right" aria-hidden="true"></span>
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                         <span class="ms-2">Logout</span>
                     </button>
                 </form>
@@ -52,7 +58,7 @@
             <NotAuthorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="account/login">
-                        <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Login
+                        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Login
                     </NavLink>
                 </div>
             </NotAuthorized>
