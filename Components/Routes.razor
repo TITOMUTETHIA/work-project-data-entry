@@ -3,4 +3,12 @@
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="alert alert-warning">
+                <h1>Page not found</h1>
+                <p>The requested page was not found.</p>
+            </div>
+        </LayoutView>
+    </NotFound>
 </Router>

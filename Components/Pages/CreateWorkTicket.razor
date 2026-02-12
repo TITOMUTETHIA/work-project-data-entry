@@ -1,0 +1,58 @@
+@page "/create-ticket"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+
+@inject IWorkTicketService WorkTicketService
+@inject NavigationManager NavigationManager
+
+<PageTitle>New Work Ticket</PageTitle>
+
+<h3>Create New Work Ticket</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <EditForm Model="@newTicket" OnValidSubmit="HandleValidSubmit" FormName="CreateWorkTicket">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label for="ticketNumber" class="form-label">Ticket Number</label>
+                <InputText id="ticketNumber" @bind-Value="newTicket.TicketNumber" class="form-control" />
+                <ValidationMessage For="@(() => newTicket.TicketNumber)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="costCentre" class="form-label">Cost Centre</label>
+                <InputText id="costCentre" @bind-Value="newTicket.CostCentre" class="form-control" />
+                <ValidationMessage For="@(() => newTicket.CostCentre)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="operatorName" class="form-label">Operator Name</label>
+                <InputText id="operatorName" @bind-Value="newTicket.OperatorName" class="form-control" />
+            </div>
+            
+            <div class="mb-3">
+                <label for="activity" class="form-label">Activity</label>
+                <InputTextArea id="activity" @bind-Value="newTicket.Activity" class="form-control" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create Ticket</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+
+    private readonly WorkTicket newTicket = new();
+
+    private async Task HandleValidSubmit()
+    {
+        var authState = await authenticationStateTask!;
+        newTicket.CreatedBy = authState.User.Identity?.Name;
+
+        await WorkTicketService.CreateWorkTicketAsync(newTicket);
+        NavigationManager.NavigateTo("/tickets");
+    }
+}

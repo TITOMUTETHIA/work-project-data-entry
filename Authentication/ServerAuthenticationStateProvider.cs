@@ -1,24 +1,19 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
-namespace WorkTicketApp.Authentication
+namespace WorkTicketApp.Authentication;
+
+public sealed class ServerAuthenticationStateProvider(IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
 {
-    public class ServerAuthenticationStateProvider : AuthenticationStateProvider
+    public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        var user = httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
+        return Task.FromResult(new AuthenticationState(user));
+    }
 
-        public ServerAuthenticationStateProvider(IHttpContextAccessor httpContextAccessor)
-        {
-            _httpContextAccessor = httpContextAccessor;
-        }
-
-        public override Task<AuthenticationState> GetAuthenticationStateAsync()
-        {
-            var user = _httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
-            return Task.FromResult(new AuthenticationState(user));
-        }
-
-        public void NotifyAuthenticationStateChanged() =>
-            base.NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity()))));
+    public void NotifyAuthenticationStateChanged()
+    {
+        var user = httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
     }
 }

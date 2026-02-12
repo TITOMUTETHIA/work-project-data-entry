@@ -1,5 +1,7 @@
 ﻿@page "/"
 @inherits LayoutComponentBase
+@inject IWorkTicketService TicketService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="page">
     <main>
@@ -13,6 +15,14 @@
                 <p class="text-muted">
                     Welcome to Chrome Partners Data Entry. Please fill in the required fields below to record operational data.
                 </p>
+
+                @if (showSuccess)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Success!</strong> Ticket saved successfully.
+                        <button type="button" class="btn-close" @onclick="() => showSuccess = false" aria-label="Close"></button>
+                    </div>
+                }
 
                 <EditForm Model="@ticket" OnValidSubmit="HandleValidSubmit">
                     <DataAnnotationsValidator />
@@ -96,26 +106,30 @@
 
 @code {
     private WorkTicket ticket = new();
+    private bool showSuccess = false;
 
-    private void HandleValidSubmit()
+    protected override void OnInitialized()
     {
-        // TODO: Save to SQL via EF Core
-        Console.WriteLine("Ticket saved!");
+        // Initialize dates to prevent validation issues with default (0001-01-01) values
+        ticket.StartDateTime = DateTime.Now;
+        ticket.EndDateTime = DateTime.Now;
     }
 
-    public class WorkTicket
+    private async Task HandleValidSubmit()
     {
-        public string? TicketNumber { get; set; }
-        public string? CostCentre { get; set; }
-        public string? Activity { get; set; }
-        public string? OperatorName { get; set; }
-        public int NumOperators { get; set; }
-        public DateTime StartDateTime { get; set; }
-        public int StartCounter { get; set; }
-        public DateTime EndDateTime { get; set; }
-        public int EndCounter { get; set; }
-        public int QuantityIn { get; set; }
-        public int QuantityOut { get; set; }
-        public string? MaterialUsed { get; set; }
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        ticket.CreatedBy = user.Identity?.Name ?? "Anonymous";
+        
+        await TicketService.CreateWorkTicketAsync(ticket);
+        
+        showSuccess = true;
+        
+        // Reset form for the next entry
+        ticket = new WorkTicket { StartDateTime = DateTime.Now, EndDateTime = DateTime.Now };
+        
+        // Auto-hide success message after a few seconds
+        _ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { showSuccess = false; StateHasChanged(); }));
     }
 }

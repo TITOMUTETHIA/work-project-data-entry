@@ -1,0 +1,56 @@
+@page "/register"
+@using System.Net
+@using WorkTicketApp.Models
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<PageTitle>Register</PageTitle>
+
+<h1>Register</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <EditForm Model="@_registerDto" OnValidSubmit="HandleRegister" FormName="RegisterForm">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <InputText id="username" @bind-Value="_registerDto.Username" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <InputText id="password" type="password" @bind-Value="_registerDto.Password" class="form-control" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Register</button>
+            <a href="/login" class="btn btn-link">Already have an account?</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private readonly LoginDto _registerDto = new();
+    private string? _errorMessage;
+
+    private async Task HandleRegister()
+    {
+        _errorMessage = null;
+        var response = await Http.PostAsJsonAsync("/api/auth/register", _registerDto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            _errorMessage = "Registration failed. The username might already be taken.";
+        }
+    }
+}

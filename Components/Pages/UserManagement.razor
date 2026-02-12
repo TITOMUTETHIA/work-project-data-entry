@@ -1,0 +1,131 @@
+@page "/admin/users"
+@using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject IUserService UserService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>User Management</PageTitle>
+
+<h1>User Management</h1>
+
+<p>This page lists all users registered in the system.</p>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search by username..." @bind="_searchTerm" @onkeyup.Enter="SearchUsers" />
+            <button class="btn btn-primary" @onclick="SearchUsers">Search</button>
+            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
+            <button class="btn btn-success" @onclick="ExportUsers">Export CSV</button>
+        </div>
+    </div>
+</div>
+
+<DataGrid @ref="_grid" TItem="UserDto" DataProvider="GetUserData" InitialSortColumn="Username">
+    <HeaderTemplate>
+        <tr>
+            <SortableHeader TItem="UserDto" ColumnName="Username">Username</SortableHeader>
+            <SortableHeader TItem="UserDto" ColumnName="Role">Role</SortableHeader>
+            <th>Actions</th>
+        </tr>
+    </HeaderTemplate>
+    <RowTemplate>
+        <tr>
+            <td>@context.Username</td>
+            <td>
+                @if (context.Username != _currentUsername)
+                {
+                    <select class="form-select form-select-sm" value="@context.Role" @onchange="@(e => UpdateRoleAsync(context.Username, e.Value?.ToString()))">
+                        <option value="User">User</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                }
+                else
+                {
+                    @context.Role <span class="text-muted">(You)</span>
+                }
+            </td>
+            <td>
+                @if (context.Username != _currentUsername)
+                {
+                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteUserAsync(context.Username)">Delete</button>
+                }
+                else
+                {
+                    <span class="text-muted">Current User</span>
+                }
+            </td>
+        </tr>
+    </RowTemplate>
+</DataGrid>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private DataGrid<UserDto>? _grid;
+    private string? _searchTerm;
+    private string? _currentUsername;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationState!;
+        _currentUsername = authState.User.Identity?.Name;
+    }
+
+    private Task<PagedResult<UserDto>> GetUserData(int page, int pageSize, string sortBy, bool sortAscending)
+    {
+        return Task.FromResult(UserService.GetUsers(page, pageSize, _searchTerm, sortBy, sortAscending));
+    }
+
+    private async Task DeleteUserAsync(string username)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the user '{username}'?");
+        if (confirmed)
+        {
+            if (UserService.DeleteUser(username))
+            {
+                await _grid!.RefreshDataAsync();
+            }
+        }
+    }
+
+    private async Task UpdateRoleAsync(string username, string? newRole)
+    {
+        if (!string.IsNullOrEmpty(newRole))
+        {
+            UserService.UpdateUserRole(username, newRole);
+            await _grid!.RefreshDataAsync();
+        }
+    }
+
+    private async Task SearchUsers()
+    {
+        await _grid!.RefreshDataAsync();
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        _searchTerm = string.Empty;
+        await _grid!.RefreshDataAsync();
+    }
+
+    private async Task ExportUsers()
+    {
+        var users = UserService.GetAllUsers(_searchTerm, _grid!.CurrentSortBy, _grid!.IsSortAscending);
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("Username,Role");
+        
+        foreach (var user in users)
+        {
+            csv.AppendLine($"\"{user.Username}\",\"{user.Role}\"");
+        }
+
+        // Define a temporary download function in JS if it doesn't exist, then call it.
+        await JSRuntime.InvokeVoidAsync("eval", "window.downloadCsv = window.downloadCsv || function(filename, content) { var link = document.createElement('a'); link.download = filename; link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content); document.body.appendChild(link); link.click(); document.body.removeChild(link); }");
+        
+        await JSRuntime.InvokeVoidAsync("downloadCsv", "users.csv", csv.ToString());
+    }
+}

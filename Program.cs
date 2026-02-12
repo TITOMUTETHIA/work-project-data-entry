@@ -1,78 +1,156 @@
 using WorkTicketApp.Components;
 using WorkTicketApp.Services;
 using WorkTicketApp.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
 using WorkTicketApp.Models;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+// Configure database
 
-// HttpClient for server-side components
-builder.Services.AddHttpClient();
-
-// Authentication/Authorization
-builder.Services.AddSingleton<IUserService, InMemoryUserService>();
-builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.Cookie.Name = "WorkTicketAuth";
-        options.LoginPath = "/login";
-    });
-
-builder.Services.AddAuthorization();
+// Configure services
+ConfigureServices(builder.Services);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+// Initialize database
+
+// Seed default admin user
+SeedUserData(app);
+
+// Configure middleware
+ConfigureMiddleware(app);
+
+await app.RunAsync();
+
+static void ConfigureServices(IServiceCollection services)
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    // Blazor components
+    services.AddRazorComponents()
+        .AddInteractiveServerComponents();
+
+    // HTTP clients
+    services.AddHttpClient();
+
+    // Application services
+    services.AddSingleton<IWorkTicketService, InMemoryWorkTicketService>();
+    services.AddSingleton<IUserService, InMemoryUserService>();
+    services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
+    services.AddHttpContextAccessor();
+
+    // Authentication & Authorization
+    services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.Cookie.Name = "WorkTicketAuth";
+            options.LoginPath = "/account/login";
+            options.LogoutPath = "/logout";
+            options.SlidingExpiration = true;
+            options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        });
+
+    services.AddAuthorizationBuilder();
 }
 
-app.UseHttpsRedirection();
-
-app.UseStaticFiles();
-app.UseAntiforgery();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
-
-// Minimal endpoints for auth
-app.MapPost("/auth/login", async (HttpContext ctx, IUserService users) =>
+static void SeedUserData(WebApplication app)
 {
-    var creds = await ctx.Request.ReadFromJsonAsync<LoginDto>();
-    if (creds == null) return Results.BadRequest();
+    var config = app.Configuration.GetSection("AdminUser");
+    var username = config["Username"];
+    var password = config["Password"];
+
+    if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+    {
+        app.Logger.LogWarning("Admin user not configured in appsettings.json. Skipping seed.");
+        return;
+    }
+
+    // Since IUserService is a singleton, we can resolve it directly from the root provider.
+    var userService = app.Services.GetRequiredService<IUserService>();
+
+    // The Register method is idempotent for our use case because it won't
+    // add the user if they already exist.
+    if (userService.Register(username, password, "Admin"))
+    {
+        app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+    }
+}
+
+static void ConfigureMiddleware(WebApplication app)
+{
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler("/error");
+    }
+    else
+    {
+        app.UseExceptionHandler("/error", createScopeForErrors: true);
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection()
+        .UseStaticFiles()
+        .UseAntiforgery()
+        .UseAuthentication()
+        .UseAuthorization();
+
+    app.MapRazorComponents<App>()
+        .AddInteractiveServerRenderMode();
+
+    // Auth endpoints
+    var authGroup = app.MapGroup("/api/auth")
+        .WithName("Auth");
+
+    authGroup.MapPost("/login", Login)
+        .WithName("Login")
+        .WithSummary("Authenticate user");
+
+    authGroup.MapPost("/register", Register)
+        .WithName("Register")
+        .WithSummary("Register new user");
+
+    authGroup.MapPost("/logout", (Delegate)Logout)
+        .WithName("Logout")
+        .WithSummary("Logout user")
+        .RequireAuthorization();
+}
+
+static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
+{
+    if (creds?.Username == null || creds?.Password == null)
+    {
+        return Results.Redirect("/account/login?error=MissingCredentials");
+    }
+
     var principal = users.ValidateCredentials(creds.Username, creds.Password);
-    if (principal == null) return Results.Unauthorized();
+    if (principal is null)
+    {
+        return Results.Redirect("/account/login?error=InvalidCredentials");
+    }
+
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-    return Results.Ok();
-});
+    return Results.Redirect("/");
+}
 
-app.MapPost("/auth/register", (IUserService users, LoginDto creds) =>
+static IResult Register(IUserService users, LoginDto creds)
 {
-    if (creds?.Username == null || creds?.Password == null) return Results.BadRequest();
-    var ok = users.Register(creds.Username, creds.Password);
-    return ok ? Results.Ok() : Results.Conflict();
-});
+    if (creds?.Username == null || creds?.Password == null)
+    {
+        return Results.BadRequest("Username and password are required");
+    }
 
-app.MapPost("/auth/logout", async (HttpContext ctx) =>
+    if (!users.Register(creds.Username, creds.Password))
+    {
+        return Results.Conflict("User already exists");
+    }
+
+    return Results.Ok();
+}
+
+static async Task<IResult> Logout(HttpContext ctx)
 {
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Ok();
-});
-
-app.Run();
+    return Results.Redirect("/account/login");
+}

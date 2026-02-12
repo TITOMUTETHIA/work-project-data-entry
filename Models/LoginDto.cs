@@ -1,8 +1,9 @@
-namespace WorkTicketApp.Models
+using System.ComponentModel.DataAnnotations;
+
+namespace WorkTicketApp.Models;
+
+public class LoginDto
 {
-    public class LoginDto
-    {
-        public string? Username { get; set; }
-        public string? Password { get; set; }
-    }
+    [Required] public string Username { get; set; } = "";
+    [Required] public string Password { get; set; } = "";
 }
