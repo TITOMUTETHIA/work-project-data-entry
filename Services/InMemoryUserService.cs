@@ -107,4 +107,46 @@ public class InMemoryUserService : IUserService
         }
         return false;
     }
+
+    public Task<List<User>> GetAllUsersAsync()
+    {
+        var users = _users.Select((kvp, index) => new User
+        {
+            Id = index + 1,
+            Username = kvp.Key,
+            Role = kvp.Value.Role,
+            Password = kvp.Value.PasswordHash
+        }).ToList();
+        return Task.FromResult(users);
+    }
+
+    public Task AddUserAsync(User user)
+    {
+        Register(user.Username, user.Password, user.Role);
+        return Task.CompletedTask;
+    }
+
+    public Task<User?> ValidateUserAsync(string username, string password)
+    {
+        if (_users.TryGetValue(username, out var userInfo) && BCrypt.Net.BCrypt.Verify(password, userInfo.PasswordHash))
+        {
+            return Task.FromResult<User?>(new User { Username = username, Role = userInfo.Role, Password = userInfo.PasswordHash });
+        }
+        return Task.FromResult<User?>(null);
+    }
+
+    public Task<PagedResult<UserDto>> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true)
+    {
+        return Task.FromResult(GetUsers(pageNumber, pageSize, searchTerm, sortBy, sortAscending));
+    }
+
+    public Task<bool> DeleteUserAsync(string username)
+    {
+        return Task.FromResult(DeleteUser(username));
+    }
+
+    public Task<bool> UpdateUserRoleAsync(string username, string role)
+    {
+        return Task.FromResult(UpdateUserRole(username, role));
+    }
 }
