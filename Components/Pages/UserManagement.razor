@@ -8,124 +8,146 @@
 
 <PageTitle>User Management</PageTitle>
 
-<h1>User Management</h1>
+<div class="container mt-4">
+    <h2 class="mb-4">User Management</h2>
 
-<p>This page lists all users registered in the system.</p>
+    <div class="row">
+        <!-- Add User Form -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Add New User</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@newUser" OnValidSubmit="HandleAddUser">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
 
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search by username..." @bind="_searchTerm" @onkeyup.Enter="SearchUsers" />
-            <button class="btn btn-primary" @onclick="SearchUsers">Search</button>
-            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
-            <button class="btn btn-success" @onclick="ExportUsers">Export CSV</button>
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <InputText @bind-Value="newUser.Username" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText @bind-Value="newUser.Password" type="password" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <InputSelect @bind-Value="newUser.Role" class="form-select">
+                                <option value="User">User</option>
+                                <option value="Admin">Admin</option>
+                            </InputSelect>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Create User</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- User List -->
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Existing Users</h5>
+                </div>
+                <div class="card-body">
+                    @if (users == null)
+                    {
+                        <div class="text-center my-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!users.Any())
+                    {
+                        <div class="alert alert-info">No users found.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in users)
+                                    {
+                                        <tr>
+                                            <td>@user.Username</td>
+                                            <td>
+                                                <span class="badge @(user.Role == "Admin" ? "bg-danger" : "bg-secondary")">
+                                                    @user.Role
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteUser(user.Username)">
+                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<DataGrid @ref="_grid" TItem="UserDto" DataProvider="GetUserData" InitialSortColumn="Username">
-    <HeaderTemplate>
-        <tr>
-            <SortableHeader TItem="UserDto" ColumnName="Username">Username</SortableHeader>
-            <SortableHeader TItem="UserDto" ColumnName="Role">Role</SortableHeader>
-            <th>Actions</th>
-        </tr>
-    </HeaderTemplate>
-    <RowTemplate>
-        <tr>
-            <td>@context.Username</td>
-            <td>
-                @if (context.Username != _currentUsername)
-                {
-                    <select class="form-select form-select-sm" value="@context.Role" @onchange="@(e => UpdateRoleAsync(context.Username, e.Value?.ToString()))">
-                        <option value="User">User</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                }
-                else
-                {
-                    @context.Role <span class="text-muted">(You)</span>
-                }
-            </td>
-            <td>
-                @if (context.Username != _currentUsername)
-                {
-                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteUserAsync(context.Username)">Delete</button>
-                }
-                else
-                {
-                    <span class="text-muted">Current User</span>
-                }
-            </td>
-        </tr>
-    </RowTemplate>
-</DataGrid>
-
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationState { get; set; }
+    private List<UserDto> users = new();
+    private RegisterModel newUser = new();
 
-    private DataGrid<UserDto>? _grid;
-    private string? _searchTerm;
-    private string? _currentUsername;
+    public class RegisterModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Username { get; set; } = "";
+        
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = "";
+        
+        public string Role { get; set; } = "User";
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationState!;
-        _currentUsername = authState.User.Identity?.Name;
+        await LoadUsers();
     }
 
-    private Task<PagedResult<UserDto>> GetUserData(int page, int pageSize, string sortBy, bool sortAscending)
+    private async Task LoadUsers()
     {
-        return Task.FromResult(UserService.GetUsers(page, pageSize, _searchTerm, sortBy, sortAscending));
+        var userEntities = await UserService.GetAllUsersAsync();
+        users = userEntities.Select(u => new UserDto { Username = u.Username, Role = u.Role }).ToList();
     }
 
-    private async Task DeleteUserAsync(string username)
+    private async Task HandleAddUser()
     {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the user '{username}'?");
-        if (confirmed)
-        {
-            if (UserService.DeleteUser(username))
-            {
-                await _grid!.RefreshDataAsync();
-            }
-        }
-    }
-
-    private async Task UpdateRoleAsync(string username, string? newRole)
-    {
-        if (!string.IsNullOrEmpty(newRole))
-        {
-            UserService.UpdateUserRole(username, newRole);
-            await _grid!.RefreshDataAsync();
-        }
-    }
-
-    private async Task SearchUsers()
-    {
-        await _grid!.RefreshDataAsync();
-    }
-
-    private async Task ClearSearchAsync()
-    {
-        _searchTerm = string.Empty;
-        await _grid!.RefreshDataAsync();
-    }
-
-    private async Task ExportUsers()
-    {
-        var users = UserService.GetAllUsers(_searchTerm, _grid!.CurrentSortBy, _grid!.IsSortAscending);
-        var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Username,Role");
+        var success = await UserService.RegisterAsync(newUser.Username, newUser.Password, newUser.Role);
         
-        foreach (var user in users)
+        if (success)
         {
-            csv.AppendLine($"\"{user.Username}\",\"{user.Role}\"");
+            newUser = new RegisterModel(); // Reset form
+            await LoadUsers();
         }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to create user. Username may already exist.");
+        }
+    }
 
-        // Define a temporary download function in JS if it doesn't exist, then call it.
-        await JSRuntime.InvokeVoidAsync("eval", "window.downloadCsv = window.downloadCsv || function(filename, content) { var link = document.createElement('a'); link.download = filename; link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content); document.body.appendChild(link); link.click(); document.body.removeChild(link); }");
-        
-        await JSRuntime.InvokeVoidAsync("downloadCsv", "users.csv", csv.ToString());
+    private async Task DeleteUser(string username)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete user '{username}'?"))
+        {
+            await UserService.DeleteUserAsync(username);
+            await LoadUsers();
+        }
     }
 }

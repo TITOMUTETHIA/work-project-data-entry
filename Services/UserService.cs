@@ -38,9 +38,9 @@ namespace WorkTicketApp.Services
             return null;
         }
 
-        public bool Register(string username, string password, string role = "User")
+        public async Task<bool> RegisterAsync(string username, string password, string role = "User")
         {
-            if (_context.Users.Any(u => u.Username == username))
+            if (await _context.Users.AnyAsync(u => u.Username == username))
             {
                 return false;
             }
@@ -53,7 +53,7 @@ namespace WorkTicketApp.Services
             };
 
             _context.Users.Add(user);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -164,6 +164,37 @@ namespace WorkTicketApp.Services
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
             if (user == null) return false;
             user.Role = role;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<string?> GeneratePasswordResetTokenAsync(string username)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null) return null;
+
+            // Note: Ensure User model has PasswordResetToken and PasswordResetTokenExpires properties
+            var token = Guid.NewGuid().ToString();
+            user.PasswordResetToken = token;
+            user.PasswordResetTokenExpires = DateTime.UtcNow.AddHours(1);
+            
+            await _context.SaveChangesAsync();
+            return token;
+        }
+
+        public async Task<bool> ResetPasswordAsync(string username, string token, string newPassword)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            
+            if (user == null || user.PasswordResetToken != token || user.PasswordResetTokenExpires < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpires = null;
+
             await _context.SaveChangesAsync();
             return true;
         }

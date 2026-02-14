@@ -1,0 +1,148 @@
+@page "/work-tickets/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@attribute [Authorize]
+@inject IWorkTicketService WorkTicketService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit Ticket</PageTitle>
+
+<h1>Edit Work Ticket</h1>
+
+@if (ticket == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    Edit Ticket #@ticket.TicketNumber
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@ticket" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="alert alert-danger" />
+
+                        @if (!string.IsNullOrEmpty(dateValidationError))
+                        {
+                            <div class="alert alert-danger">@dateValidationError</div>
+                        }
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Work Ticket Number</label>
+                                <InputText @bind-Value="ticket.TicketNumber" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Cost Centre</label>
+                                <InputText @bind-Value="ticket.CostCentre" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Activity</label>
+                                <InputText @bind-Value="ticket.Activity" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Operator Name</label>
+                                <InputText @bind-Value="ticket.OperatorName" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Number of Operators</label>
+                                <InputNumber @bind-Value="ticket.NumOperators" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Material Used</label>
+                                <InputText @bind-Value="ticket.MaterialUsed" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date & Time</label>
+                                <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="ticket.StartDateTime" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Date & Time</label>
+                                <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="ticket.EndDateTime" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Counter</label>
+                                <InputNumber @bind-Value="ticket.StartCounter" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Counter</label>
+                                <InputNumber @bind-Value="ticket.EndCounter" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Quantity In</label>
+                                <InputNumber @bind-Value="ticket.QuantityIn" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Quantity Out</label>
+                                <InputNumber @bind-Value="ticket.QuantityOut" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary me-2">💾 Save Changes</button>
+                            <button type="button" class="btn btn-secondary" @onclick="Cancel">❌ Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private WorkTicket? ticket;
+    private string? dateValidationError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ticket = await WorkTicketService.GetTicketByIdAsync(Id);
+        
+        if (ticket == null)
+        {
+            NavigationManager.NavigateTo("/tickets");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (ticket != null)
+        {
+            if (ticket.EndDateTime <= ticket.StartDateTime)
+            {
+                dateValidationError = "End Date must be after Start Date.";
+                return;
+            }
+
+            await WorkTicketService.UpdateTicketAsync(ticket);
+            NavigationManager.NavigateTo("/tickets");
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/tickets");
+    }
+}

@@ -1,12 +1,13 @@
 using WorkTicketApp.Models;
 
-namespace WorkTicketApp.Services;
-
-public interface IWorkTicketService
+namespace WorkTicketApp.Services
 {
-    Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null);
-    Task<WorkTicket> CreateWorkTicketAsync(WorkTicket workTicket);
-    Task<WorkTicket?> GetTicketByIdAsync(int id);
-    Task UpdateTicketAsync(WorkTicket ticket);
-    Task DeleteTicketAsync(int id);
+    public interface IWorkTicketService
+    {
+        Task CreateWorkTicketAsync(WorkTicket ticket);
+        Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int page, int pageSize, string? searchTerm, string? sortBy, bool sortAscending, DateTime? startDate = null, DateTime? endDate = null, DateTime? updatedStartDate = null, DateTime? updatedEndDate = null);
+        Task<WorkTicket?> GetTicketByIdAsync(int id);
+        Task UpdateTicketAsync(WorkTicket ticket);
+        Task DeleteTicketAsync(int id);
+    }
 }

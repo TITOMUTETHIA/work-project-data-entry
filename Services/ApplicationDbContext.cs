@@ -11,5 +11,6 @@ namespace WorkTicketApp.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<WorkTicket> WorkTickets { get; set; }
     }
 }

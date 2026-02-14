@@ -4,6 +4,7 @@
 @using WorkTicketApp.Services
 @inject IWorkTicketService TicketService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Data Entry</PageTitle>
 
@@ -31,6 +32,11 @@
                 <EditForm Model="@ticket" OnValidSubmit="HandleValidSubmit">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="alert alert-danger" />
+
+                    @if (!string.IsNullOrEmpty(dateValidationError))
+                    {
+                        <div class="alert alert-danger">@dateValidationError</div>
+                    }
 
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -100,7 +106,7 @@
 
                     <div class="d-flex justify-content-end mt-4">
                         <button type="submit" class="btn btn-primary me-2">💾 Save</button>
-                        <button type="button" class="btn btn-secondary" @onclick="ResetForm">🧹 Clear</button>
+                        <button type="button" class="btn btn-secondary" @onclick="ConfirmReset">🧹 Clear</button>
                     </div>
                 </EditForm>
             </div>
@@ -111,6 +117,7 @@
 @code {
     private WorkTicket ticket = new();
     private bool showSuccess = false;
+    private string? dateValidationError;
 
     protected override void OnInitialized()
     {
@@ -119,6 +126,13 @@
 
     private async Task HandleValidSubmit()
     {
+        if (ticket.EndDateTime <= ticket.StartDateTime)
+        {
+            dateValidationError = "End Date must be after Start Date.";
+            return;
+        }
+        dateValidationError = null;
+
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
@@ -135,8 +149,17 @@
         _ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { showSuccess = false; StateHasChanged(); }));
     }
 
+    private async Task ConfirmReset()
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to clear the form? All unsaved data will be lost."))
+        {
+            ResetForm();
+        }
+    }
+
     private void ResetForm()
     {
         ticket = new WorkTicket { StartDateTime = DateTime.Now, EndDateTime = DateTime.Now };
+        dateValidationError = null;
     }
 }

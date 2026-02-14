@@ -10,15 +10,15 @@ public class InMemoryUserService : IUserService
     // Use a thread-safe dictionary to store users.
     // This service is registered as a singleton, so this dictionary will persist
     // for the lifetime of the application.
-    private readonly ConcurrentDictionary<string, (string PasswordHash, string Role)> _users = new();
+    private readonly ConcurrentDictionary<string, (string PasswordHash, string Role, string? ResetToken, DateTime? ResetTokenExpires)> _users = new();
 
-    public bool Register(string username, string password, string role = "User")
+    public Task<bool> RegisterAsync(string username, string password, string role = "User")
     {
         // Hash the password securely using BCrypt.
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
         // TryAdd is a thread-safe way to add a user if they don't already exist.
-        return _users.TryAdd(username, (passwordHash, role));
+        return Task.FromResult(_users.TryAdd(username, (passwordHash, role, null, null)));
     }
 
     public ClaimsPrincipal? ValidateCredentials(string username, string password)
@@ -102,7 +102,7 @@ public class InMemoryUserService : IUserService
     {
         if (_users.TryGetValue(username, out var userInfo))
         {
-            _users[username] = (userInfo.PasswordHash, role);
+            _users[username] = (userInfo.PasswordHash, role, userInfo.ResetToken, userInfo.ResetTokenExpires);
             return true;
         }
         return false;
@@ -115,15 +115,16 @@ public class InMemoryUserService : IUserService
             Id = index + 1,
             Username = kvp.Key,
             Role = kvp.Value.Role,
-            Password = kvp.Value.PasswordHash
+            Password = kvp.Value.PasswordHash,
+            PasswordResetToken = kvp.Value.ResetToken,
+            PasswordResetTokenExpires = kvp.Value.ResetTokenExpires
         }).ToList();
         return Task.FromResult(users);
     }
 
-    public Task AddUserAsync(User user)
+    public async Task AddUserAsync(User user)
     {
-        Register(user.Username, user.Password, user.Role);
-        return Task.CompletedTask;
+        await RegisterAsync(user.Username, user.Password, user.Role);
     }
 
     public Task<User?> ValidateUserAsync(string username, string password)
@@ -148,5 +149,32 @@ public class InMemoryUserService : IUserService
     public Task<bool> UpdateUserRoleAsync(string username, string role)
     {
         return Task.FromResult(UpdateUserRole(username, role));
+    }
+
+    public Task<string?> GeneratePasswordResetTokenAsync(string username)
+    {
+        if (_users.TryGetValue(username, out var userInfo))
+        {
+            var token = Guid.NewGuid().ToString();
+            var expires = DateTime.UtcNow.AddHours(1);
+            _users[username] = (userInfo.PasswordHash, userInfo.Role, token, expires);
+            return Task.FromResult<string?>(token);
+        }
+        return Task.FromResult<string?>(null);
+    }
+
+    public Task<bool> ResetPasswordAsync(string username, string token, string newPassword)
+    {
+        if (_users.TryGetValue(username, out var userInfo))
+        {
+            if (userInfo.ResetToken == token && userInfo.ResetTokenExpires > DateTime.UtcNow)
+            {
+                var newHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                // Update password and clear token
+                _users[username] = (newHash, userInfo.Role, null, null);
+                return Task.FromResult(true);
+            }
+        }
+        return Task.FromResult(false);
     }
 }

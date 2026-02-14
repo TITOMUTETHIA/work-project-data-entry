@@ -6,10 +6,14 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using WorkTicketApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using WorkTicketApp.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure services
 ConfigureServices(builder.Services);
@@ -19,7 +23,7 @@ var app = builder.Build();
 // Initialize database
 
 // Seed default admin user
-SeedUserData(app);
+await SeedUserData(app);
 
 // Configure middleware
 ConfigureMiddleware(app);
@@ -38,6 +42,7 @@ static void ConfigureServices(IServiceCollection services)
     // Application services
     services.AddSingleton<IWorkTicketService, InMemoryWorkTicketService>();
     services.AddSingleton<IUserService, InMemoryUserService>();
+    services.AddTransient<IEmailService, EmailService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
     services.AddHttpContextAccessor();
 
@@ -55,7 +60,7 @@ static void ConfigureServices(IServiceCollection services)
     services.AddAuthorizationBuilder();
 }
 
-static void SeedUserData(WebApplication app)
+static async Task SeedUserData(WebApplication app)
 {
     var config = app.Configuration.GetSection("AdminUser");
     var username = config["Username"];
@@ -72,9 +77,22 @@ static void SeedUserData(WebApplication app)
 
     // The Register method is idempotent for our use case because it won't
     // add the user if they already exist.
-    if (userService.Register(username, password, "Admin"))
+    if (await userService.RegisterAsync(username, password, "Admin"))
     {
         app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+    }
+
+    // Seed a standard user if configured
+    var stdConfig = app.Configuration.GetSection("StandardUser");
+    var stdUsername = stdConfig["Username"];
+    var stdPassword = stdConfig["Password"];
+
+    if (!string.IsNullOrEmpty(stdUsername) && !string.IsNullOrEmpty(stdPassword))
+    {
+        if (await userService.RegisterAsync(stdUsername, stdPassword, "User"))
+        {
+            app.Logger.LogInformation("Default standard user '{Username}' created.", stdUsername);
+        }
     }
 }
 
@@ -134,14 +152,14 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
     return Results.Redirect("/");
 }
 
-static IResult Register(IUserService users, LoginDto creds)
+static async Task<IResult> Register(IUserService users, LoginDto creds)
 {
     if (creds?.Username == null || creds?.Password == null)
     {
         return Results.BadRequest("Username and password are required");
     }
 
-    if (!users.Register(creds.Username, creds.Password))
+    if (!await users.RegisterAsync(creds.Username, creds.Password))
     {
         return Results.Conflict("User already exists");
     }

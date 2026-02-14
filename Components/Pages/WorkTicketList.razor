@@ -1,9 +1,13 @@
 @page "/work-tickets"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
 @attribute [Authorize]
 @inject IWorkTicketService WorkTicketService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Work Tickets</PageTitle>
 
@@ -12,52 +16,232 @@
 <p>This page lists all submitted work tickets.</p>
 
 <div class="row mb-3">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="input-group">
             <input type="text" class="form-control" placeholder="Search tickets..." @bind="_searchTerm" @onkeyup.Enter="SearchTickets" />
-            <button class="btn btn-primary" @onclick="SearchTickets">Search</button>
-            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
         </div>
+    </div>
+    <div class="col-md-4">
+        <div class="input-group">
+            <span class="input-group-text">From</span>
+            <input type="date" class="form-control" @bind="_startDate" />
+            <span class="input-group-text">To</span>
+            <input type="date" class="form-control" @bind="_endDate" />
+        </div>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-primary" @onclick="SearchTickets">Search</button>
+        <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
+        <button class="btn btn-success" @onclick="ExportToCsv">Export CSV</button>
     </div>
 </div>
 
-<DataGrid @ref="_grid" TItem="WorkTicket" DataProvider="GetWorkTicketData" InitialSortColumn="CreatedAt">
-    <HeaderTemplate>
-        <tr>
-            <SortableHeader TItem="WorkTicket" ColumnName="TicketNumber">Ticket #</SortableHeader>
-            <SortableHeader TItem="WorkTicket" ColumnName="Activity">Activity</SortableHeader>
-            <SortableHeader TItem="WorkTicket" ColumnName="OperatorName">Operator</SortableHeader>
-            <SortableHeader TItem="WorkTicket" ColumnName="CreatedAt">Date Created</SortableHeader>
-        </tr>
-    </HeaderTemplate>
-    <RowTemplate>
-        <tr>
-            <td>@context.TicketNumber</td>
-            <td>@context.Activity</td>
-            <td>@context.OperatorName</td>
-            <td>@context.CreatedAt.ToShortDateString()</td>
-        </tr>
-    </RowTemplate>
-</DataGrid>
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th style="cursor: pointer" @onclick='() => SortBy("TicketNumber")'>Ticket # @GetSortIcon("TicketNumber")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("Activity")'>Activity @GetSortIcon("Activity")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("OperatorName")'>Operator @GetSortIcon("OperatorName")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("CreatedAt")'>Date Created @GetSortIcon("CreatedAt")</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var ticket in _tickets)
+            {
+                <tr>
+                    <td>@ticket.TicketNumber</td>
+                    <td>@ticket.Activity</td>
+                    <td>@ticket.OperatorName</td>
+                    <td>@ticket.CreatedAt.ToShortDateString()</td>
+                    <td>
+                        <a href="work-tickets/edit/@ticket.Id" class="btn btn-sm btn-primary">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit
+                        </a>
+                        <AuthorizeView Roles="Admin">
+                            <button class="btn btn-sm btn-danger ms-1" @onclick="() => ShowDeleteConfirmation(ticket.Id)">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </AuthorizeView>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div>
+            Showing @((_currentPage - 1) * _pageSize + 1) to @(Math.Min(_currentPage * _pageSize, _totalCount)) of @_totalCount entries
+        </div>
+        <nav aria-label="Page navigation">
+            <ul class="pagination mb-0">
+                <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(_currentPage - 1)">Previous</button>
+                </li>
+                <li class="page-item @(_currentPage >= TotalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => ChangePage(_currentPage + 1)">Next</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}
+
+@if (_showDeleteModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this ticket?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-    private DataGrid<WorkTicket>? _grid;
+    private List<WorkTicket> _tickets = new();
     private string? _searchTerm;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalCount = 0;
+    private string _sortBy = "CreatedAt";
+    private bool _sortAscending = false;
+    private bool _isLoading = false;
+    private bool _showDeleteModal = false;
+    private int _ticketToDeleteId;
 
-    private Task<PagedResult<WorkTicket>> GetWorkTicketData(int page, int pageSize, string sortBy, bool sortAscending)
+    private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / _pageSize);
+
+    protected override async Task OnInitializedAsync()
     {
-        return WorkTicketService.GetWorkTicketsAsync(page, pageSize, _searchTerm, sortBy, sortAscending);
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        var result = await WorkTicketService.GetWorkTicketsAsync(_currentPage, _pageSize, _searchTerm, _sortBy, _sortAscending, _startDate, _endDate);
+        _tickets = result.Items;
+        _totalCount = result.TotalCount;
+        _isLoading = false;
     }
 
     private async Task SearchTickets()
     {
-        // Refresh the grid to apply the search term
-        await _grid!.RefreshDataAsync();
+        _currentPage = 1;
+        await LoadData();
     }
 
     private async Task ClearSearchAsync()
     {
         _searchTerm = string.Empty;
-        await _grid!.RefreshDataAsync();
+        _startDate = null;
+        _endDate = null;
+        _currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task SortBy(string column)
+    {
+        if (_sortBy == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortBy = column;
+            _sortAscending = true;
+        }
+        await LoadData();
+    }
+
+    private string GetSortIcon(string column)
+    {
+        if (_sortBy != column) return "";
+        return _sortAscending ? "▲" : "▼";
+    }
+
+    private async Task ExportToCsv()
+    {
+        var result = await WorkTicketService.GetWorkTicketsAsync(1, int.MaxValue, _searchTerm, "CreatedAt", false, _startDate, _endDate);
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine("TicketNumber,Activity,OperatorName,CreatedAt,CostCentre,MaterialUsed,QuantityIn,QuantityOut");
+
+        foreach (var item in result.Items)
+        {
+            builder.AppendLine($"{EscapeCsv(item.TicketNumber)},{EscapeCsv(item.Activity)},{EscapeCsv(item.OperatorName)},{item.CreatedAt},{EscapeCsv(item.CostCentre)},{EscapeCsv(item.MaterialUsed)},{item.QuantityIn},{item.QuantityOut}");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(builder.ToString());
+        await JSRuntime.InvokeVoidAsync("downloadFile", "work-tickets.csv", "text/csv", bytes);
+    }
+
+    private string EscapeCsv(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        if (value.Contains(",") || value.Contains("\"") || value.Contains("\n"))
+        {
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        }
+        return value;
+    }
+
+    private void ShowDeleteConfirmation(int id)
+    {
+        _ticketToDeleteId = id;
+        _showDeleteModal = true;
+    }
+
+    private void CancelDelete()
+    {
+        _showDeleteModal = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!user.IsInRole("Admin"))
+        {
+            return;
+        }
+
+        await WorkTicketService.DeleteTicketAsync(_ticketToDeleteId);
+        _showDeleteModal = false;
+        await LoadData();
+        if (_tickets.Count == 0 && _currentPage > 1)
+        {
+            _currentPage--;
+            await LoadData();
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > TotalPages) return;
+        _currentPage = page;
+        await LoadData();
     }
 }

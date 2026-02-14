@@ -7,7 +7,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
     private readonly List<WorkTicket> _tickets = new();
     private int _nextId = 1;
 
-    public Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null)
+    public Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null, DateTime? updatedStartDate = null, DateTime? updatedEndDate = null)
     {
         var query = _tickets.AsQueryable();
 
@@ -19,6 +19,16 @@ public class InMemoryWorkTicketService : IWorkTicketService
         if (endDate.HasValue)
         {
             query = query.Where(t => t.StartDateTime < endDate.Value.AddDays(1));
+        }
+
+        if (updatedStartDate.HasValue)
+        {
+            query = query.Where(t => t.UpdatedAt >= updatedStartDate.Value);
+        }
+
+        if (updatedEndDate.HasValue)
+        {
+            query = query.Where(t => t.UpdatedAt < updatedEndDate.Value.AddDays(1));
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -49,12 +59,12 @@ public class InMemoryWorkTicketService : IWorkTicketService
         return Task.FromResult(new PagedResult<WorkTicket> { Items = items, TotalCount = totalCount });
     }
 
-    public Task<WorkTicket> CreateWorkTicketAsync(WorkTicket ticket)
+    public Task CreateWorkTicketAsync(WorkTicket ticket)
     {
         ticket.Id = _nextId++;
         ticket.CreatedAt = DateTime.UtcNow;
         _tickets.Add(ticket);
-        return Task.FromResult(ticket);
+        return Task.CompletedTask;
     }
 
     public Task<WorkTicket?> GetTicketByIdAsync(int id)
