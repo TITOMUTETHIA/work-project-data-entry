@@ -94,6 +94,12 @@ static async Task SeedUserData(WebApplication app)
             app.Logger.LogInformation("Default standard user '{Username}' created.", stdUsername);
         }
     }
+
+    // Seed user1
+    if (await userService.RegisterAsync("user1", "user1", "User"))
+    {
+        app.Logger.LogInformation("User 'user1' created.");
+    }
 }
 
 static void ConfigureMiddleware(WebApplication app)
