@@ -342,3 +342,11 @@ C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\WorkTicketApp.pdb
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\WorkTicketApp.genruntimeconfig.cache
 C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\obj\Debug\net10.0\ref\WorkTicketApp.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\ClosedXML.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\ClosedXML.Parser.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\DocumentFormat.OpenXml.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\DocumentFormat.OpenXml.Framework.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\ExcelNumberFormat.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\RBush.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\SixLabors.Fonts.dll
+C:\Users\ADMIN\OneDrive - Chrome Partners\Desktop\tito\updated code\work-project-data-entry\bin\Debug\net10.0\System.IO.Packaging.dll

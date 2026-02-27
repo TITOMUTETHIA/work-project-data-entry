@@ -1,6 +1,8 @@
 @page "/tickets"
 @using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Helpers
 @using Microsoft.AspNetCore.Components.Authorization
+@using WorkTicketApp.Models
 @inject IWorkTicketService TicketService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -57,13 +59,15 @@ else
                 <th style="cursor: pointer" @onclick='() => SortBy("CostCentre")'>Cost Centre @GetSortIcon("CostCentre")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("Activity")'>Activity @GetSortIcon("Activity")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("OperatorName")'>Operator @GetSortIcon("OperatorName")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("CreatedBy")'>Created By @GetSortIcon("CreatedBy")</th>
                 <th>Num Operators</th>
                 <th>Start</th>
                 <th>End</th>
                 <th>Qty In</th>
                 <th>Qty Out</th>
                 <th>Material Used</th>
-                <th>Last Modified</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("UpdatedAt")'>Last Modified @GetSortIcon("UpdatedAt")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("LastModifiedBy")'>Modified By @GetSortIcon("LastModifiedBy")</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -75,17 +79,19 @@ else
                     <td>@t.CostCentre</td>
                     <td>@t.Activity</td>
                     <td>@t.OperatorName</td>
+                    <td>@t.CreatedBy</td>
                     <td>@t.NumOperators</td>
-                    <td>@t.StartDateTime.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@t.EndDateTime.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@FormatUtils.FormatDateTime(t.StartDateTime)</td>
+                    <td>@FormatUtils.FormatDateTime(t.EndDateTime)</td>
                     <td>@t.QuantityIn</td>
                     <td>@t.QuantityOut</td>
                     <td>@t.MaterialUsed</td>
-                    <td>@(t.UpdatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                    <td>@FormatUtils.FormatDateTime(t.UpdatedAt)</td>
+                    <td>@t.LastModifiedBy</td>
                     <td>
                         @if (t.TicketNumber is not null)
                         {
-                            <button class="btn btn-sm btn-primary" @onclick="() => EditTicket(t.Id)">Edit</button>
+                            <button class="btn btn-sm btn-primary" @onclick="() => ShowEditModal(t)">Edit</button>
                             <AuthorizeView Roles="Admin">
                                 <button class="btn btn-sm btn-danger ms-1" @onclick="() => ShowDeleteConfirmation(t.Id)">Delete</button>
                             </AuthorizeView>
@@ -137,6 +143,45 @@ else
     </div>
 }
 
+@if (showEditModal && ticketToEdit != null)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <EditForm Model="@ticketToEdit" OnValidSubmit="HandleQuickEditSubmit">
+                    <DataAnnotationsValidator />
+                    <div class="modal-header">
+                        <h5 class="modal-title">Quick Edit Ticket: @ticketToEdit.TicketNumber</h5>
+                        <button type="button" class="btn-close" @onclick="CancelEdit"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3"><label class="form-label">Ticket Number</label><InputText @bind-Value="ticketToEdit.TicketNumber" class="form-control" /></div>
+                                <div class="mb-3"><label class="form-label">Cost Centre</label><InputText @bind-Value="ticketToEdit.CostCentre" class="form-control" /></div>
+                                <div class="mb-3"><label class="form-label">Operator Name</label><InputText @bind-Value="ticketToEdit.OperatorName" class="form-control" /></div>
+                                <div class="mb-3"><label class="form-label">Num Operators</label><InputNumber @bind-Value="ticketToEdit.NumOperators" class="form-control" /></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3"><label class="form-label">Start Date/Time</label><InputDate Type="InputDateType.DateTimeLocal" @bind-Value="ticketToEdit.StartDateTime" class="form-control" /></div>
+                                <div class="mb-3"><label class="form-label">End Date/Time</label><InputDate Type="InputDateType.DateTimeLocal" @bind-Value="ticketToEdit.EndDateTime" class="form-control" /></div>
+                                <div class="mb-3"><label class="form-label">Quantity In</label><InputNumber @bind-Value="ticketToEdit.QuantityIn" class="form-control" /></div>
+                                <div class="mb-3"><label class="form-label">Quantity Out</label><InputNumber @bind-Value="ticketToEdit.QuantityOut" class="form-control" /></div>
+                            </div>
+                        </div>
+                        <div class="mb-3"><label class="form-label">Activity</label><InputTextArea @bind-Value="ticketToEdit.Activity" class="form-control" /></div>
+                        <div class="mb-3"><label class="form-label">Material Used</label><InputTextArea @bind-Value="ticketToEdit.MaterialUsed" class="form-control" /></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<WorkTicket> tickets = new();
     private string searchTerm = "";
@@ -152,6 +197,8 @@ else
     private DateTime? filterUpdatedEndDate;
     private bool showDeleteModal = false;
     private int ticketToDeleteId;
+    private bool showEditModal = false;
+    private WorkTicket? ticketToEdit;
     private bool isLoading = false;
 
     protected override async Task OnInitializedAsync()
@@ -201,11 +248,6 @@ else
         await LoadTickets();
     }
 
-    private void EditTicket(int id)
-    {
-        NavigationManager.NavigateTo($"/work-tickets/edit/{id}");
-    }
-
     private void ShowDeleteConfirmation(int id)
     {
         ticketToDeleteId = id;
@@ -235,5 +277,43 @@ else
             currentPage--;
             await LoadTickets();
         }
+    }
+
+    private void ShowEditModal(WorkTicket ticket)
+    {
+        // Create a copy for editing to avoid modifying the list directly
+        ticketToEdit = new WorkTicket
+        {
+            Id = ticket.Id,
+            TicketNumber = ticket.TicketNumber,
+            CostCentre = ticket.CostCentre,
+            Activity = ticket.Activity,
+            OperatorName = ticket.OperatorName,
+            NumOperators = ticket.NumOperators,
+            StartDateTime = ticket.StartDateTime,
+            EndDateTime = ticket.EndDateTime,
+            QuantityIn = ticket.QuantityIn,
+            QuantityOut = ticket.QuantityOut,
+            MaterialUsed = ticket.MaterialUsed,
+            CreatedAt = ticket.CreatedAt,
+            CreatedBy = ticket.CreatedBy
+        };
+        showEditModal = true;
+    }
+
+    private void CancelEdit()
+    {
+        showEditModal = false;
+        ticketToEdit = null;
+    }
+
+    private async Task HandleQuickEditSubmit()
+    {
+        if (ticketToEdit == null) return;
+
+        await TicketService.UpdateTicketAsync(ticketToEdit);
+        showEditModal = false;
+        ticketToEdit = null;
+        await LoadTickets(); // Refresh the list
     }
 }

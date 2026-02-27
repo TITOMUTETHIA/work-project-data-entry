@@ -3,6 +3,9 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
+@using WorkTicketApp.Helpers
+@using System.IO
+@using ClosedXML.Excel
 @attribute [Authorize]
 @inject IWorkTicketService WorkTicketService
 @inject IJSRuntime JSRuntime
@@ -32,7 +35,7 @@
     <div class="col-md-4 text-end">
         <button class="btn btn-primary" @onclick="SearchTickets">Search</button>
         <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
-        <button class="btn btn-success" @onclick="ExportToCsv">Export CSV</button>
+        <button class="btn btn-success" @onclick="ExportToExcel">Export Excel</button>
     </div>
 </div>
 
@@ -52,7 +55,9 @@ else
                 <th style="cursor: pointer" @onclick='() => SortBy("TicketNumber")'>Ticket # @GetSortIcon("TicketNumber")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("Activity")'>Activity @GetSortIcon("Activity")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("OperatorName")'>Operator @GetSortIcon("OperatorName")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("CreatedBy")'>Created By @GetSortIcon("CreatedBy")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("CreatedAt")'>Date Created @GetSortIcon("CreatedAt")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("LastModifiedBy")'>Modified By @GetSortIcon("LastModifiedBy")</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -63,7 +68,9 @@ else
                     <td>@ticket.TicketNumber</td>
                     <td>@ticket.Activity</td>
                     <td>@ticket.OperatorName</td>
-                    <td>@ticket.CreatedAt.ToShortDateString()</td>
+                    <td>@ticket.CreatedBy</td>
+                    <td>@FormatUtils.FormatDateTime(ticket.CreatedAt)</td>
+                    <td>@ticket.LastModifiedBy</td>
                     <td>
                         <a href="work-tickets/edit/@ticket.Id" class="btn btn-sm btn-primary">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
@@ -182,29 +189,55 @@ else
         return _sortAscending ? "▲" : "▼";
     }
 
-    private async Task ExportToCsv()
+    private async Task ExportToExcel()
     {
-        var result = await WorkTicketService.GetWorkTicketsAsync(1, int.MaxValue, _searchTerm, "CreatedAt", false, _startDate, _endDate);
-        var builder = new System.Text.StringBuilder();
-        builder.AppendLine("TicketNumber,Activity,OperatorName,CreatedAt,CostCentre,MaterialUsed,QuantityIn,QuantityOut");
+        // Fetch all tickets based on current filters and sort order
+        var result = await WorkTicketService.GetWorkTicketsAsync(1, int.MaxValue, _searchTerm, _sortBy, _sortAscending, _startDate, _endDate);
 
-        foreach (var item in result.Items)
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Work Tickets");
+        var currentRow = 1;
+
+        // Headers
+        worksheet.Cell(currentRow, 1).Value = "Ticket #";
+        worksheet.Cell(currentRow, 2).Value = "Activity";
+        worksheet.Cell(currentRow, 3).Value = "Operator";
+        worksheet.Cell(currentRow, 4).Value = "Created By";
+        worksheet.Cell(currentRow, 5).Value = "Date Created";
+        worksheet.Cell(currentRow, 6).Value = "Cost Centre";
+        worksheet.Cell(currentRow, 7).Value = "Material Used";
+        worksheet.Cell(currentRow, 8).Value = "Quantity In";
+        worksheet.Cell(currentRow, 9).Value = "Quantity Out";
+        worksheet.Cell(currentRow, 10).Value = "Modified By";
+
+        // Style header row
+        worksheet.Row(1).Style.Font.Bold = true;
+
+        // Body
+        foreach (var ticket in result.Items)
         {
-            builder.AppendLine($"{EscapeCsv(item.TicketNumber)},{EscapeCsv(item.Activity)},{EscapeCsv(item.OperatorName)},{item.CreatedAt},{EscapeCsv(item.CostCentre)},{EscapeCsv(item.MaterialUsed)},{item.QuantityIn},{item.QuantityOut}");
+            currentRow++;
+            worksheet.Cell(currentRow, 1).Value = ticket.TicketNumber;
+            worksheet.Cell(currentRow, 2).Value = ticket.Activity;
+            worksheet.Cell(currentRow, 3).Value = ticket.OperatorName;
+            worksheet.Cell(currentRow, 4).Value = ticket.CreatedBy;
+            worksheet.Cell(currentRow, 5).Value = ticket.CreatedAt;
+            worksheet.Cell(currentRow, 6).Value = ticket.CostCentre;
+            worksheet.Cell(currentRow, 7).Value = ticket.MaterialUsed;
+            worksheet.Cell(currentRow, 8).Value = ticket.QuantityIn;
+            worksheet.Cell(currentRow, 9).Value = ticket.QuantityOut;
+            worksheet.Cell(currentRow, 10).Value = ticket.LastModifiedBy;
         }
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(builder.ToString());
-        await JSRuntime.InvokeVoidAsync("downloadFile", "work-tickets.csv", "text/csv", bytes);
-    }
+        // Formatting
+        worksheet.Column(5).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
+        worksheet.Columns().AdjustToContents();
 
-    private string EscapeCsv(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return "";
-        if (value.Contains(",") || value.Contains("\"") || value.Contains("\n"))
-        {
-            return $"\"{value.Replace("\"", "\"\"")}\"";
-        }
-        return value;
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        var content = stream.ToArray();
+
+        await JSRuntime.InvokeVoidAsync("downloadFile", "work-tickets.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", content);
     }
 
     private void ShowDeleteConfirmation(int id)

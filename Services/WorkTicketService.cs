@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using WorkTicketApp.Data;
 using WorkTicketApp.Models;
@@ -7,15 +8,22 @@ namespace WorkTicketApp.Services
     public class WorkTicketService : IWorkTicketService
     {
         private readonly ApplicationDbContext _context;
+        private readonly AuthenticationStateProvider _authenticationStateProvider;
 
-        public WorkTicketService(ApplicationDbContext context)
+        public WorkTicketService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider)
         {
             _context = context;
+            _authenticationStateProvider = authenticationStateProvider;
         }
 
         public async Task CreateWorkTicketAsync(WorkTicket ticket)
         {
+            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            ticket.CreatedBy = user.Identity?.Name;
             ticket.CreatedAt = DateTime.UtcNow;
+
             _context.WorkTickets.Add(ticket);
             await _context.SaveChangesAsync();
         }
@@ -60,8 +68,20 @@ namespace WorkTicketApp.Services
             {
                 ("ticketnumber", true) => query.OrderBy(t => t.TicketNumber),
                 ("ticketnumber", false) => query.OrderByDescending(t => t.TicketNumber),
+                ("costcentre", true) => query.OrderBy(t => t.CostCentre),
+                ("costcentre", false) => query.OrderByDescending(t => t.CostCentre),
+                ("activity", true) => query.OrderBy(t => t.Activity),
+                ("activity", false) => query.OrderByDescending(t => t.Activity),
+                ("operatorname", true) => query.OrderBy(t => t.OperatorName),
+                ("operatorname", false) => query.OrderByDescending(t => t.OperatorName),
+                ("createdby", true) => query.OrderBy(t => t.CreatedBy),
+                ("createdby", false) => query.OrderByDescending(t => t.CreatedBy),
                 ("createdat", true) => query.OrderBy(t => t.CreatedAt),
                 ("createdat", false) => query.OrderByDescending(t => t.CreatedAt),
+                ("updatedat", true) => query.OrderBy(t => t.UpdatedAt),
+                ("updatedat", false) => query.OrderByDescending(t => t.UpdatedAt),
+                ("lastmodifiedby", true) => query.OrderBy(t => t.LastModifiedBy),
+                ("lastmodifiedby", false) => query.OrderByDescending(t => t.LastModifiedBy),
                 _ => query.OrderByDescending(t => t.CreatedAt)
             };
 
@@ -78,6 +98,10 @@ namespace WorkTicketApp.Services
 
         public async Task UpdateTicketAsync(WorkTicket ticket)
         {
+            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            ticket.LastModifiedBy = user.Identity?.Name;
             ticket.UpdatedAt = DateTime.UtcNow;
             _context.WorkTickets.Update(ticket);
             await _context.SaveChangesAsync();

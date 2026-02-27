@@ -1,13 +1,11 @@
 using WorkTicketApp.Components;
 using WorkTicketApp.Services;
 using WorkTicketApp.Authentication;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
-using WorkTicketApp.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WorkTicketApp.Data;
+using WorkTicketApp.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,8 +38,8 @@ static void ConfigureServices(IServiceCollection services)
     services.AddHttpClient();
 
     // Application services
-    services.AddSingleton<IWorkTicketService, InMemoryWorkTicketService>();
-    services.AddSingleton<IUserService, InMemoryUserService>();
+    services.AddScoped<IWorkTicketService, WorkTicketService>();
+    services.AddScoped<IUserService, UserService>();
     services.AddTransient<IEmailService, EmailService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
     services.AddHttpContextAccessor();
@@ -62,43 +60,54 @@ static void ConfigureServices(IServiceCollection services)
 
 static async Task SeedUserData(WebApplication app)
 {
-    var config = app.Configuration.GetSection("AdminUser");
-    var username = config["Username"];
-    var password = config["Password"];
+    // Create a scope to resolve scoped services like DbContext and UserService
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
 
-    if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+    try
     {
-        app.Logger.LogWarning("Admin user not configured in appsettings.json. Skipping seed.");
-        return;
-    }
+        var dbContext = services.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.MigrateAsync();
 
-    // Since IUserService is a singleton, we can resolve it directly from the root provider.
-    var userService = app.Services.GetRequiredService<IUserService>();
+        var config = app.Configuration.GetSection("AdminUser");
+        var username = config["Username"];
+        var password = config["Password"];
 
-    // The Register method is idempotent for our use case because it won't
-    // add the user if they already exist.
-    if (await userService.RegisterAsync(username, password, "Admin"))
-    {
-        app.Logger.LogInformation("Default admin user '{Username}' created.", username);
-    }
-
-    // Seed a standard user if configured
-    var stdConfig = app.Configuration.GetSection("StandardUser");
-    var stdUsername = stdConfig["Username"];
-    var stdPassword = stdConfig["Password"];
-
-    if (!string.IsNullOrEmpty(stdUsername) && !string.IsNullOrEmpty(stdPassword))
-    {
-        if (await userService.RegisterAsync(stdUsername, stdPassword, "User"))
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
-            app.Logger.LogInformation("Default standard user '{Username}' created.", stdUsername);
+            app.Logger.LogWarning("Admin user not configured in appsettings.json. Skipping seed.");
+            return;
+        }
+
+        var userService = services.GetRequiredService<IUserService>();
+
+        if (await userService.RegisterAsync(username, password, "Admin"))
+        {
+            app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+        }
+
+        // Seed a standard user if configured
+        var stdConfig = app.Configuration.GetSection("StandardUser");
+        var stdUsername = stdConfig["Username"];
+        var stdPassword = stdConfig["Password"];
+
+        if (!string.IsNullOrEmpty(stdUsername) && !string.IsNullOrEmpty(stdPassword))
+        {
+            if (await userService.RegisterAsync(stdUsername, stdPassword, "User"))
+            {
+                app.Logger.LogInformation("Default standard user '{Username}' created.", stdUsername);
+            }
+        }
+
+        // Seed user1
+        if (await userService.RegisterAsync("user1", "user1", "User"))
+        {
+            app.Logger.LogInformation("User 'user1' created.");
         }
     }
-
-    // Seed user1
-    if (await userService.RegisterAsync("user1", "user1", "User"))
+    catch (Exception ex)
     {
-        app.Logger.LogInformation("User 'user1' created.");
+        app.Logger.LogError(ex, "An error occurred while migrating or seeding the database.");
     }
 }
 
@@ -124,57 +133,5 @@ static void ConfigureMiddleware(WebApplication app)
         .AddInteractiveServerRenderMode();
 
     // Auth endpoints
-    var authGroup = app.MapGroup("/api/auth")
-        .WithName("Auth");
-
-    authGroup.MapPost("/login", Login)
-        .WithName("Login")
-        .WithSummary("Authenticate user");
-
-    authGroup.MapPost("/register", Register)
-        .WithName("Register")
-        .WithSummary("Register new user");
-
-    authGroup.MapPost("/logout", (Delegate)Logout)
-        .WithName("Logout")
-        .WithSummary("Logout user")
-        .RequireAuthorization();
-}
-
-static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
-{
-    if (creds?.Username == null || creds?.Password == null)
-    {
-        return Results.Redirect("/account/login?error=MissingCredentials");
-    }
-
-    var principal = users.ValidateCredentials(creds.Username, creds.Password);
-    if (principal is null)
-    {
-        return Results.Redirect("/account/login?error=InvalidCredentials");
-    }
-
-    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-    return Results.Redirect("/");
-}
-
-static async Task<IResult> Register(IUserService users, LoginDto creds)
-{
-    if (creds?.Username == null || creds?.Password == null)
-    {
-        return Results.BadRequest("Username and password are required");
-    }
-
-    if (!await users.RegisterAsync(creds.Username, creds.Password))
-    {
-        return Results.Conflict("User already exists");
-    }
-
-    return Results.Ok();
-}
-
-static async Task<IResult> Logout(HttpContext ctx)
-{
-    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Redirect("/account/login");
+    app.MapAuthEndpoints();
 }
