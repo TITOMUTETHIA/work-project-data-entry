@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using WorkTicketApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using WorkTicketApp.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,12 +16,24 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure services
 ConfigureServices(builder.Services);
 
+// Add DbContextFactory
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+
 var app = builder.Build();
 
 // Initialize database
 
 // Seed default admin user
-SeedUserData(app);
+try
+{
+    SeedUserData(app);
+    SeedWorkTicketData(app);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "An error occurred seeding the DB. Ensure SQL Server is running and connection string is correct.");
+}
 
 // Configure middleware
 ConfigureMiddleware(app);
@@ -36,8 +50,8 @@ static void ConfigureServices(IServiceCollection services)
     services.AddHttpClient();
 
     // Application services
-    services.AddSingleton<IWorkTicketService, InMemoryWorkTicketService>();
-    services.AddSingleton<IUserService, InMemoryUserService>();
+    services.AddScoped<IWorkTicketService, WorkTicketService>();
+    services.AddScoped<IUserService, UserService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
     services.AddHttpContextAccessor();
 
@@ -67,8 +81,9 @@ static void SeedUserData(WebApplication app)
         return;
     }
 
-    // Since IUserService is a singleton, we can resolve it directly from the root provider.
-    var userService = app.Services.GetRequiredService<IUserService>();
+    // Create a scope to resolve Scoped services
+    using var scope = app.Services.CreateScope();
+    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
     // The Register method is idempotent for our use case because it won't
     // add the user if they already exist.
@@ -76,6 +91,61 @@ static void SeedUserData(WebApplication app)
     {
         app.Logger.LogInformation("Default admin user '{Username}' created.", username);
     }
+}
+
+static void SeedWorkTicketData(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // The database is created by migrations, but we can check if it's empty.
+    if (context.WorkTickets.Any())
+    {
+        app.Logger.LogInformation("Work ticket data already exists. Skipping seed.");
+        return;
+    }
+
+    app.Logger.LogInformation("Seeding work ticket data...");
+
+    var tickets = new List<WorkTicket>
+    {
+        new() {
+            TicketNumber = "TKT-001",
+            CostCentre = "CC-MECH",
+            Activity = "Routine Maintenance",
+            OperatorName = "John Doe",
+            NumOperators = 1,
+            StartDateTime = "2023-10-26 08:00",
+            StartCounter = 1000,
+            EndDateTime = "2023-10-26 10:00",
+            EndCounter = 1050,
+            QuantityIn = 50,
+            QuantityOut = 48,
+            MaterialUsed = "Oil, Filter",
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
+            CreatedBy = "system"
+        },
+        new() {
+            TicketNumber = "TKT-002",
+            CostCentre = "CC-ELEC",
+            Activity = "Panel Inspection",
+            OperatorName = "Jane Smith",
+            NumOperators = 2,
+            StartDateTime = "2023-10-27 09:30",
+            StartCounter = 500,
+            EndDateTime = "2023-10-27 11:00",
+            EndCounter = 500,
+            QuantityIn = 10,
+            QuantityOut = 10,
+            MaterialUsed = "Cleaning supplies",
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            CreatedBy = "system"
+        }
+    };
+
+    context.WorkTickets.AddRange(tickets);
+    context.SaveChanges();
+    app.Logger.LogInformation("Finished seeding work ticket data.");
 }
 
 static void ConfigureMiddleware(WebApplication app)

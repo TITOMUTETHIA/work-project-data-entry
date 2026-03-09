@@ -13,12 +13,12 @@ public class InMemoryWorkTicketService : IWorkTicketService
 
         if (startDate.HasValue)
         {
-            query = query.Where(t => t.StartDateTime >= startDate.Value);
+            query = query.Where(t => t.StartDateTime != null && DateTime.TryParse(t.StartDateTime, out var dt) && dt >= startDate.Value);
         }
 
         if (endDate.HasValue)
         {
-            query = query.Where(t => t.StartDateTime < endDate.Value.AddDays(1));
+            query = query.Where(t => t.StartDateTime != null && DateTime.TryParse(t.StartDateTime, out var dt) && dt < endDate.Value.AddDays(1));
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -40,7 +40,9 @@ public class InMemoryWorkTicketService : IWorkTicketService
             ("activity", false) => query.OrderByDescending(t => t.Activity),
             ("operatorname", true) => query.OrderBy(t => t.OperatorName),
             ("operatorname", false) => query.OrderByDescending(t => t.OperatorName),
-            _ => query.OrderByDescending(t => t.CreatedAt)
+            ("startdatetime", true) => query.OrderBy(t => DateTime.TryParse(t.StartDateTime, out var dt) ? dt : DateTime.MaxValue),
+            ("startdatetime", false) => query.OrderByDescending(t => DateTime.TryParse(t.StartDateTime, out var dt) ? dt : DateTime.MinValue),
+            _ => query.OrderByDescending(t => t.CreatedAt) // Default sort
         };
 
         var totalCount = query.Count();
@@ -63,25 +65,25 @@ public class InMemoryWorkTicketService : IWorkTicketService
         return Task.FromResult(ticket);
     }
 
-    public Task UpdateTicketAsync(WorkTicket ticket)
+    public Task UpdateTicketAsync(WorkTicket ticket, string updatedBy)
     {
         var existingTicket = _tickets.FirstOrDefault(t => t.Id == ticket.Id);
         if (existingTicket != null)
         {
-            existingTicket.TicketNumber = ticket.TicketNumber;
-            existingTicket.CostCentre = ticket.CostCentre;
-            existingTicket.Activity = ticket.Activity;
-            existingTicket.OperatorName = ticket.OperatorName;
-            existingTicket.NumOperators = ticket.NumOperators;
-            existingTicket.StartDateTime = ticket.StartDateTime;
-            existingTicket.StartCounter = ticket.StartCounter;
-            existingTicket.EndDateTime = ticket.EndDateTime;
-            existingTicket.EndCounter = ticket.EndCounter;
-            existingTicket.QuantityIn = ticket.QuantityIn;
-            existingTicket.QuantityOut = ticket.QuantityOut;
-            existingTicket.MaterialUsed = ticket.MaterialUsed;
-            existingTicket.UpdatedAt = DateTime.UtcNow;
-            existingTicket.CreatedBy = ticket.CreatedBy;
+            // To avoid manual property copying and improve maintainability,
+            // we replace the object in the list.
+            var index = _tickets.IndexOf(existingTicket);
+            if (index != -1)
+            {
+                // Ensure read-only and server-controlled fields are preserved/set correctly.
+                ticket.Id = existingTicket.Id;
+                ticket.CreatedAt = existingTicket.CreatedAt;
+                ticket.CreatedBy = existingTicket.CreatedBy;
+                ticket.UpdatedAt = DateTime.UtcNow;
+                ticket.UpdatedBy = updatedBy;
+
+                _tickets[index] = ticket;
+            }
         }
         return Task.CompletedTask;
     }
@@ -94,5 +96,38 @@ public class InMemoryWorkTicketService : IWorkTicketService
             _tickets.Remove(ticket);
         }
         return Task.CompletedTask;
+    }
+
+    public Task<DashboardMetricsDto> GetDashboardMetricsAsync()
+    {
+        var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+
+        var totalTickets = _tickets.Count;
+        
+        var activeTickets = _tickets
+            .Count(t => !string.IsNullOrEmpty(t.StartDateTime) && string.IsNullOrEmpty(t.EndDateTime));
+
+        var ticketsCreatedLast7Days = _tickets
+            .Count(t => t.CreatedAt >= sevenDaysAgo);
+
+        var ticketsByCostCentre = _tickets
+            .Where(t => !string.IsNullOrEmpty(t.CostCentre))
+            .GroupBy(t => t.CostCentre)
+            .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
+            .OrderByDescending(c => c.Value)
+            .Take(10)
+            .ToList();
+
+        var ticketsByOperator = _tickets
+            .Where(t => !string.IsNullOrEmpty(t.OperatorName))
+            .GroupBy(t => t.OperatorName)
+            .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
+            .OrderByDescending(c => c.Value)
+            .Take(10)
+            .ToList();
+
+        var metrics = new DashboardMetricsDto { TotalTickets = totalTickets, ActiveTickets = activeTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
+
+        return Task.FromResult(metrics);
     }
 }

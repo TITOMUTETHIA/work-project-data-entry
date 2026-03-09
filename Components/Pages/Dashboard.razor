@@ -1,65 +1,115 @@
 @page "/dashboard"
-@using Microsoft.AspNetCore.Authorization
-@using WorkTicketApp.Services
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using WorkTicketApp.Models
-@attribute [Authorize]
+@using WorkTicketApp.Services
 @inject IWorkTicketService WorkTicketService
-@inject IUserService UserService
 
 <PageTitle>Dashboard</PageTitle>
 
 <h1>Dashboard</h1>
 
-<div class="row mt-4">
-    <!-- Work Tickets Summary -->
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">Work Tickets</div>
-            <div class="card-body">
-                <h5 class="card-title">Total Tickets</h5>
-                <p class="card-text display-4">@ticketCount</p>
-                <a href="work-tickets" class="btn btn-primary">View All</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- User Management Summary (Admin Only) -->
-    <AuthorizeView Roles="Admin">
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">User Management</div>
-                <div class="card-body">
-                    <h5 class="card-title">Registered Users</h5>
-                    <p class="card-text display-4">@userCount</p>
-                    <a href="admin/users" class="btn btn-primary">Manage Users</a>
+@if (metrics == null)
+{
+    <p><em>Loading metrics...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card text-white bg-primary h-100">
+                <div class="card-header"><i class="bi bi-ticket-detailed-fill me-2"></i>Total Tickets</div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <h2 class="card-title display-4">@metrics.TotalTickets</h2>
                 </div>
             </div>
         </div>
-    </AuthorizeView>
-
-    <!-- Quick Actions -->
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">Quick Actions</div>
-            <div class="card-body">
-                <h5 class="card-title">New Entry</h5>
-                <p class="card-text">Create a new work ticket entry immediately.</p>
-                <a href="/" class="btn btn-secondary">Create Ticket</a>
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card text-dark bg-warning h-100">
+                <div class="card-header"><i class="bi bi-play-circle-fill me-2"></i>Active Tickets</div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <h2 class="card-title display-4">@metrics.ActiveTickets</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card text-white bg-success h-100">
+                <div class="card-header"><i class="bi bi-calendar-plus-fill me-2"></i>Created in Last 7 Days</div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <h2 class="card-title display-4">@metrics.TicketsCreatedLast7Days</h2>
+                </div>
             </div>
         </div>
     </div>
-</div>
+
+    <div class="row mt-2">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    Tickets by Cost Centre (Top 10)
+                </div>
+                <div class="card-body">
+                    @if (!metrics.TicketsByCostCentre.Any())
+                    {
+                        <p class="text-muted">No data available.</p>
+                    }
+                    else
+                    {
+                        var max = metrics.TicketsByCostCentre.Max(c => c.Value);
+                        foreach (var item in metrics.TicketsByCostCentre)
+                        {
+                            var percentage = max > 0 ? (double)item.Value / max * 100 : 0;
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <strong>@item.Label</strong>
+                                    <span>@item.Value</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" style="width: @(percentage)%;" aria-valuenow="@item.Value" aria-valuemin="0" aria-valuemax="@max"></div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    Tickets by Operator (Top 10)
+                </div>
+                <div class="card-body">
+                    @if (!metrics.TicketsByOperator.Any())
+                    {
+                        <p class="text-muted">No data available.</p>
+                    }
+                    else
+                    {
+                        var max = metrics.TicketsByOperator.Max(c => c.Value);
+                        foreach (var item in metrics.TicketsByOperator)
+                        {
+                            var percentage = max > 0 ? (double)item.Value / max * 100 : 0;
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <strong>@item.Label</strong>
+                                    <span>@item.Value</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-info" role="progressbar" style="width: @(percentage)%;" aria-valuenow="@item.Value" aria-valuemin="0" aria-valuemax="@max"></div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-    private int ticketCount;
-    private int userCount;
+    private DashboardMetricsDto? metrics;
 
     protected override async Task OnInitializedAsync()
     {
-        var ticketResult = await WorkTicketService.GetWorkTicketsAsync(1, 1, null, null, true);
-        ticketCount = ticketResult.TotalCount;
-
-        var userResult = await UserService.GetUsersAsync(1, 1);
-        userCount = userResult.TotalCount;
+        metrics = await WorkTicketService.GetDashboardMetricsAsync();
     }
 }

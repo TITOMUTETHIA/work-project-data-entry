@@ -1,63 +1,226 @@
 @page "/work-tickets"
-@using Microsoft.AspNetCore.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
-@attribute [Authorize]
 @inject IWorkTicketService WorkTicketService
 
 <PageTitle>Work Tickets</PageTitle>
 
 <h1>Work Tickets</h1>
 
-<p>This page lists all submitted work tickets.</p>
-
-<div class="row mb-3">
-    <div class="col-md-6">
+<div class="row mb-3 g-3 align-items-end">
+    <div class="col-md-4">
+        <label for="search-box" class="form-label">Search</label>
         <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search tickets..." @bind="_searchTerm" @onkeyup.Enter="SearchTickets" />
-            <button class="btn btn-primary" @onclick="SearchTickets">Search</button>
-            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
+            <input id="search-box" type="text" class="form-control" placeholder="Ticket #, operator..." @bind="searchTerm" @onkeyup="HandleSearchKeyUp" />
         </div>
+    </div>
+    <div class="col-md-2">
+        <label for="start-date" class="form-label">Start Date From</label>
+        <input id="start-date" type="date" class="form-control" @bind="startDate" />
+    </div>
+    <div class="col-md-2">
+        <label for="end-date" class="form-label">To</label>
+        <input id="end-date" type="date" class="form-control" @bind="endDate" />
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="button" @onclick="ApplyFilters"><i class="bi bi-funnel-fill"></i> Filter</button>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-outline-secondary w-100" type="button" @onclick="ClearFilters"><i class="bi bi-x-lg"></i> Clear</button>
     </div>
 </div>
 
-<DataGrid @ref="_grid" TItem="WorkTicket" DataProvider="GetWorkTicketData" InitialSortColumn="CreatedAt">
-    <HeaderTemplate>
-        <tr>
-            <SortableHeader TItem="WorkTicket" ColumnName="TicketNumber">Ticket #</SortableHeader>
-            <SortableHeader TItem="WorkTicket" ColumnName="Activity">Activity</SortableHeader>
-            <SortableHeader TItem="WorkTicket" ColumnName="OperatorName">Operator</SortableHeader>
-            <SortableHeader TItem="WorkTicket" ColumnName="CreatedAt">Date Created</SortableHeader>
-        </tr>
-    </HeaderTemplate>
-    <RowTemplate>
-        <tr>
-            <td>@context.TicketNumber</td>
-            <td>@context.Activity</td>
-            <td>@context.OperatorName</td>
-            <td>@context.CreatedAt.ToShortDateString()</td>
-        </tr>
-    </RowTemplate>
-</DataGrid>
+<div class="mb-3 text-end">
+    <a href="/work-tickets/add" class="btn btn-success"><i class="bi bi-plus-lg"></i> Add New Ticket</a>
+</div>
+
+@if (pagedResult == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!pagedResult.Items.Any())
+{
+    <p>No work tickets found. You can add one using the button above.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th style="cursor: pointer;" @onclick='() => ApplySort("ticketnumber")'>
+                        Ticket # <i class="bi @GetSortIcon("ticketnumber")"></i>
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => ApplySort("costcentre")'>
+                        Cost Centre <i class="bi @GetSortIcon("costcentre")"></i>
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => ApplySort("activity")'>
+                        Activity <i class="bi @GetSortIcon("activity")"></i>
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => ApplySort("operatorname")'>
+                        Operator <i class="bi @GetSortIcon("operatorname")"></i>
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => ApplySort("startdatetime")'>
+                        Start Time <i class="bi @GetSortIcon("startdatetime")"></i>
+                    </th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ticket in pagedResult.Items)
+                {
+                    <tr>
+                        <td>@ticket.TicketNumber</td>
+                        <td>@ticket.CostCentre</td>
+                        <td>@ticket.Activity</td>
+                        <td>@ticket.OperatorName</td>
+                        <td>@ticket.StartDateTime</td>
+                        <td>
+                            <a href="@($"/work-tickets/edit/{ticket.Id}")" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil-square"></i></a>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ShowDeleteConfirmation(ticket)" title="Delete"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-center">
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => GoToPage(currentPage - 1)">Previous</button>
+                </li>
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    var pageNum = i;
+                    <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages || totalPages == 0 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => GoToPage(currentPage + 1)">Next</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}
+
+@if (ticketToDelete != null)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete ticket <strong>@ticketToDelete.TicketNumber</strong>?</p>
+                    <p class="text-muted">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
 
 @code {
-    private DataGrid<WorkTicket>? _grid;
-    private string? _searchTerm;
+    private PagedResult<WorkTicket>? pagedResult;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages => pagedResult == null ? 0 : (int)Math.Ceiling((double)pagedResult.TotalCount / pageSize);
 
-    private Task<PagedResult<WorkTicket>> GetWorkTicketData(int page, int pageSize, string sortBy, bool sortAscending)
+    // Filter and Sort state
+    private string? searchTerm;
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private string currentSortBy = "createdat";
+    private bool currentSortAscending = false;
+
+    // Delete confirmation state
+    private WorkTicket? ticketToDelete;
+
+    protected override async Task OnInitializedAsync() => await LoadWorkTickets();
+
+    private async Task LoadWorkTickets()
     {
-        return WorkTicketService.GetWorkTicketsAsync(page, pageSize, _searchTerm, sortBy, sortAscending);
+        pagedResult = await WorkTicketService.GetWorkTicketsAsync(currentPage, pageSize, searchTerm, currentSortBy, currentSortAscending, startDate, endDate);
     }
 
-    private async Task SearchTickets()
+    private async Task GoToPage(int pageNumber)
     {
-        // Refresh the grid to apply the search term
-        await _grid!.RefreshDataAsync();
+        if (pageNumber < 1 || (totalPages > 0 && pageNumber > totalPages)) return;
+        currentPage = pageNumber;
+        await LoadWorkTickets();
     }
 
-    private async Task ClearSearchAsync()
+    private async Task ApplySort(string sortBy)
     {
-        _searchTerm = string.Empty;
-        await _grid!.RefreshDataAsync();
+        if (sortBy == currentSortBy)
+        {
+            currentSortAscending = !currentSortAscending;
+        }
+        else
+        {
+            currentSortBy = sortBy;
+            currentSortAscending = true;
+        }
+        currentPage = 1;
+        await LoadWorkTickets();
+    }
+
+    private async Task HandleSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyFilters();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadWorkTickets();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = null;
+        startDate = null;
+        endDate = null;
+        currentPage = 1;
+        await LoadWorkTickets();
+    }
+
+    private string GetSortIcon(string sortBy)
+    {
+        if (currentSortBy != sortBy)
+        {
+            return "bi-arrow-down-up text-muted";
+        }
+        return currentSortAscending ? "bi-sort-up" : "bi-sort-down";
+    }
+
+    private void ShowDeleteConfirmation(WorkTicket ticket)
+    {
+        ticketToDelete = ticket;
+    }
+
+    private void CancelDelete()
+    {
+        ticketToDelete = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (ticketToDelete == null) return;
+        await WorkTicketService.DeleteTicketAsync(ticketToDelete.Id);
+        ticketToDelete = null;
+        await LoadWorkTickets(); // Refresh the list
     }
 }
