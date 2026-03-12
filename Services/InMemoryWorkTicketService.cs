@@ -13,12 +13,12 @@ public class InMemoryWorkTicketService : IWorkTicketService
 
         if (startDate.HasValue)
         {
-            query = query.Where(t => t.StartDateTime != null && DateTime.TryParse(t.StartDateTime, out var dt) && dt >= startDate.Value);
+            query = query.Where(t => t.StartDateTime >= startDate.Value);
         }
 
         if (endDate.HasValue)
         {
-            query = query.Where(t => t.StartDateTime != null && DateTime.TryParse(t.StartDateTime, out var dt) && dt < endDate.Value.AddDays(1));
+            query = query.Where(t => t.StartDateTime < endDate.Value.AddDays(1));
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -40,8 +40,8 @@ public class InMemoryWorkTicketService : IWorkTicketService
             ("activity", false) => query.OrderByDescending(t => t.Activity),
             ("operatorname", true) => query.OrderBy(t => t.OperatorName),
             ("operatorname", false) => query.OrderByDescending(t => t.OperatorName),
-            ("startdatetime", true) => query.OrderBy(t => DateTime.TryParse(t.StartDateTime, out var dt) ? dt : DateTime.MaxValue),
-            ("startdatetime", false) => query.OrderByDescending(t => DateTime.TryParse(t.StartDateTime, out var dt) ? dt : DateTime.MinValue),
+            ("startdatetime", true) => query.OrderBy(t => t.StartDateTime),
+            ("startdatetime", false) => query.OrderByDescending(t => t.StartDateTime),
             _ => query.OrderByDescending(t => t.CreatedAt) // Default sort
         };
 
@@ -105,7 +105,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
         var totalTickets = _tickets.Count;
         
         var activeTickets = _tickets
-            .Count(t => !string.IsNullOrEmpty(t.StartDateTime) && string.IsNullOrEmpty(t.EndDateTime));
+            .Count(t => t.StartDateTime.HasValue && !t.EndDateTime.HasValue);
 
         var ticketsCreatedLast7Days = _tickets
             .Count(t => t.CreatedAt >= sevenDaysAgo);

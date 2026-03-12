@@ -1,131 +1,249 @@
-@page "/admin/users"
+@page "/users"
 @using Microsoft.AspNetCore.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
-@attribute [Authorize(Roles = "Admin")]
 @inject IUserService UserService
-@inject IJSRuntime JSRuntime
+@inject ModalService Modal
+@implements IDisposable
+@attribute [Authorize(Roles = "Admin")]
 
-<PageTitle>User Management</PageTitle>
+<h3 class="text-primary mb-4">👥 User Management</h3>
 
-<h1>User Management</h1>
-
-<p>This page lists all users registered in the system.</p>
-
-<div class="row mb-3">
+<div class="row mb-4">
     <div class="col-md-6">
         <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search by username..." @bind="_searchTerm" @onkeyup.Enter="SearchUsers" />
-            <button class="btn btn-primary" @onclick="SearchUsers">Search</button>
-            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
-            <button class="btn btn-success" @onclick="ExportUsers">Export CSV</button>
+            <input type="text" class="form-control" placeholder="Search users by name or role..." 
+                   value="@searchTerm" @oninput="OnSearchInput" />
+            <button class="btn btn-outline-primary" @onclick="SearchUsers">Search</button>
         </div>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-success" @onclick="ShowAddUserModal">Add New User</button>
     </div>
 </div>
 
-<DataGrid @ref="_grid" TItem="UserDto" DataProvider="GetUserData" InitialSortColumn="Username">
-    <HeaderTemplate>
+@if (showAddUserModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New User</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@newUser" OnValidSubmit="AddUser">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <InputText class="form-control" @bind-Value="newUser.Username" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText type="password" class="form-control" @bind-Value="newUser.Password" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <InputSelect class="form-select" @bind-Value="newUser.Role">
+                                <option value="User">User</option>
+                                <option value="Admin">Admin</option>
+                            </InputSelect>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save User</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<table class="table table-striped table-bordered shadow-sm">
+    <thead class="table-dark">
         <tr>
-            <SortableHeader TItem="UserDto" ColumnName="Username">Username</SortableHeader>
-            <SortableHeader TItem="UserDto" ColumnName="Role">Role</SortableHeader>
+            <th style="cursor: pointer" @onclick='() => SortBy("Username")'>Username @GetSortIcon("Username")</th>
+            <th style="cursor: pointer" @onclick='() => SortBy("Role")'>Role @GetSortIcon("Role")</th>
             <th>Actions</th>
         </tr>
-    </HeaderTemplate>
-    <RowTemplate>
-        <tr>
-            <td>@context.Username</td>
-            <td>
-                @if (context.Username != _currentUsername)
-                {
-                    <select class="form-select form-select-sm" value="@context.Role" @onchange="@(e => UpdateRoleAsync(context.Username, e.Value?.ToString()))">
-                        <option value="User">User</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                }
-                else
-                {
-                    @context.Role <span class="text-muted">(You)</span>
-                }
-            </td>
-            <td>
-                @if (context.Username != _currentUsername)
-                {
-                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteUserAsync(context.Username)">Delete</button>
-                }
-                else
-                {
-                    <span class="text-muted">Current User</span>
-                }
-            </td>
-        </tr>
-    </RowTemplate>
-</DataGrid>
+    </thead>
+    <tbody>
+        @if (users == null)
+        {
+            <tr><td colspan="3" class="text-center">Loading...</td></tr>
+        }
+        else if (!users.Any())
+        {
+            <tr><td colspan="3" class="text-center">No users found.</td></tr>
+        }
+        else
+        {
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.Username</td>
+                    <td>@user.Role</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Username)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+        Showing @((currentPage - 1) * pageSize + 1) to @(Math.Min(currentPage * pageSize, totalCount)) of @totalCount entries
+    </div>
+    <nav aria-label="Page navigation">
+        <ul class="pagination mb-0">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">Previous</button>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @currentPage</span>
+            </li>
+            <li class="page-item @(currentPage * pageSize >= totalCount ? "disabled" : "")">
+                <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">Next</button>
+            </li>
+        </ul>
+    </nav>
+</div>
 
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationState { get; set; }
+    private List<UserDto> users = new();
+    private string searchTerm = "";
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalCount = 0;
+    private string sortBy = "Username";
+    private bool sortAscending = true;
 
-    private DataGrid<UserDto>? _grid;
-    private string? _searchTerm;
-    private string? _currentUsername;
+    private bool showAddUserModal = false;
+    private UserRegistrationModel newUser = new();
+    private string? errorMessage;
+    private CancellationTokenSource _searchCts = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationState!;
-        _currentUsername = authState.User.Identity?.Name;
+        await LoadUsers();
     }
 
-    private Task<PagedResult<UserDto>> GetUserData(int page, int pageSize, string sortBy, bool sortAscending)
+    private async Task LoadUsers()
     {
-        return Task.FromResult(UserService.GetUsers(page, pageSize, _searchTerm, sortBy, sortAscending));
+        var result = await UserService.GetUsersAsync(currentPage, pageSize, searchTerm, sortBy, sortAscending);
+        users = result.Items;
+        totalCount = result.TotalCount;
     }
 
-    private async Task DeleteUserAsync(string username)
+    private async Task OnSearchInput(ChangeEventArgs e)
     {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the user '{username}'?");
-        if (confirmed)
+        searchTerm = e.Value?.ToString() ?? "";
+        _searchCts.Cancel();
+        _searchCts = new CancellationTokenSource();
+        try
         {
-            if (UserService.DeleteUser(username))
-            {
-                await _grid!.RefreshDataAsync();
-            }
+            await Task.Delay(500, _searchCts.Token);
+            await SearchUsers();
         }
-    }
-
-    private async Task UpdateRoleAsync(string username, string? newRole)
-    {
-        if (!string.IsNullOrEmpty(newRole))
-        {
-            UserService.UpdateUserRole(username, newRole);
-            await _grid!.RefreshDataAsync();
-        }
+        catch (OperationCanceledException) {}
     }
 
     private async Task SearchUsers()
     {
-        await _grid!.RefreshDataAsync();
+        currentPage = 1;
+        await LoadUsers();
     }
 
-    private async Task ClearSearchAsync()
+    private async Task SortBy(string column)
     {
-        _searchTerm = string.Empty;
-        await _grid!.RefreshDataAsync();
-    }
-
-    private async Task ExportUsers()
-    {
-        var users = UserService.GetAllUsers(_searchTerm, _grid!.CurrentSortBy, _grid!.IsSortAscending);
-        var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Username,Role");
-        
-        foreach (var user in users)
+        if (sortBy == column)
         {
-            csv.AppendLine($"\"{user.Username}\",\"{user.Role}\"");
+            sortAscending = !sortAscending;
         }
+        else
+        {
+            sortBy = column;
+            sortAscending = true;
+        }
+        await LoadUsers();
+    }
 
-        // Define a temporary download function in JS if it doesn't exist, then call it.
-        await JSRuntime.InvokeVoidAsync("eval", "window.downloadCsv = window.downloadCsv || function(filename, content) { var link = document.createElement('a'); link.download = filename; link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content); document.body.appendChild(link); link.click(); document.body.removeChild(link); }");
+    private string GetSortIcon(string column)
+    {
+        if (sortBy != column) return "";
+        return sortAscending ? "▲" : "▼";
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage < 1) return;
+        currentPage = newPage;
+        await LoadUsers();
+    }
+
+    private void ShowAddUserModal()
+    {
+        newUser = new UserRegistrationModel();
+        errorMessage = null;
+        showAddUserModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showAddUserModal = false;
+    }
+
+    private async Task AddUser()
+    {
+        var success = await UserService.RegisterAsync(newUser.Username, newUser.Password, newUser.Role);
+        if (success)
+        {
+            showAddUserModal = false;
+            await LoadUsers();
+        }
+        else
+        {
+            errorMessage = "Failed to create user. Username may already exist.";
+        }
+    }
+
+    private async Task DeleteUser(string username)
+    {
+        var confirmed = await Modal.Show("Confirm Delete", $"Are you sure you want to delete user '{username}'?");
+        if (confirmed)
+        {
+            await UserService.DeleteUserAsync(username);
+            await LoadUsers();
+        }
+    }
+
+    public void Dispose()
+    {
+        _searchCts.Cancel();
+        _searchCts.Dispose();
+    }
+
+    public class UserRegistrationModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Username { get; set; } = "";
         
-        await JSRuntime.InvokeVoidAsync("downloadCsv", "users.csv", csv.ToString());
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(6)]
+        public string Password { get; set; } = "";
+        
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Role { get; set; } = "User";
     }
 }

@@ -20,12 +20,12 @@ public class WorkTicketService : IWorkTicketService
 
         if (startDate.HasValue)
         {
-            query = query.Where(t => t.StartDateTime != null && Convert.ToDateTime(t.StartDateTime) >= startDate.Value);
+            query = query.Where(t => t.StartDateTime >= startDate.Value);
         }
 
         if (endDate.HasValue)
         {
-            query = query.Where(t => t.StartDateTime != null && Convert.ToDateTime(t.StartDateTime) < endDate.Value.AddDays(1));
+            query = query.Where(t => t.StartDateTime < endDate.Value.AddDays(1));
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -47,8 +47,8 @@ public class WorkTicketService : IWorkTicketService
             ("activity", false) => query.OrderByDescending(t => t.Activity),
             ("operatorname", true) => query.OrderBy(t => t.OperatorName),
             ("operatorname", false) => query.OrderByDescending(t => t.OperatorName),
-            ("startdatetime", true) => query.OrderBy(t => t.StartDateTime != null ? Convert.ToDateTime(t.StartDateTime) : DateTime.MaxValue),
-            ("startdatetime", false) => query.OrderByDescending(t => t.StartDateTime != null ? Convert.ToDateTime(t.StartDateTime) : DateTime.MinValue),
+            ("startdatetime", true) => query.OrderBy(t => t.StartDateTime),
+            ("startdatetime", false) => query.OrderByDescending(t => t.StartDateTime),
             _ => query.OrderByDescending(t => t.CreatedAt) // Default sort
         };
 
@@ -114,7 +114,7 @@ public class WorkTicketService : IWorkTicketService
         var totalTickets = await context.WorkTickets.CountAsync();
         
         var activeTickets = await context.WorkTickets
-            .CountAsync(t => t.StartDateTime != null && string.IsNullOrEmpty(t.EndDateTime));
+            .CountAsync(t => t.StartDateTime != null && !t.EndDateTime.HasValue);
 
         var ticketsCreatedLast7Days = await context.WorkTickets
             .CountAsync(t => t.CreatedAt >= sevenDaysAgo);

@@ -1,4 +1,4 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">WorkTicketApp</a>
     </div>
@@ -10,20 +10,28 @@
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <i class="bi bi-house-door-fill" aria-hidden="true"></i> Home
+                <i class="fas fa-home" aria-hidden="true"></i> Home
             </NavLink>
         </div>
-
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="dashboard">
-                <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i> Dashboard
+            <NavLink class="nav-link" href="tickets">
+                <i class="fas fa-ticket-alt" aria-hidden="true"></i> Work Tickets
             </NavLink>
         </div>
-
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="work-tickets">
-                <i class="bi bi-list-nested" aria-hidden="true"></i> Work Tickets
-            </NavLink>
+            <AuthorizeView Roles="Admin">
+                <NavLink class="nav-link" href="users">
+                    <i class="fas fa-users-cog" aria-hidden="true"></i> User Management
+                </NavLink>
+            </AuthorizeView>
         </div>
     </nav>
 </div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+}

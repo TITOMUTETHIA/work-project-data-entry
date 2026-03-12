@@ -18,7 +18,7 @@ ConfigureServices(builder.Services);
 
 // Add DbContextFactory
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlite(connectionString));
 
 var app = builder.Build();
 
@@ -27,8 +27,8 @@ var app = builder.Build();
 // Seed default admin user
 try
 {
-    SeedUserData(app);
-    SeedWorkTicketData(app);
+    await SeedUserDataAsync(app);
+    await SeedWorkTicketDataAsync(app);
 }
 catch (Exception ex)
 {
@@ -69,7 +69,7 @@ static void ConfigureServices(IServiceCollection services)
     services.AddAuthorizationBuilder();
 }
 
-static void SeedUserData(WebApplication app)
+static async Task SeedUserDataAsync(WebApplication app)
 {
     var config = app.Configuration.GetSection("AdminUser");
     var username = config["Username"];
@@ -87,13 +87,13 @@ static void SeedUserData(WebApplication app)
 
     // The Register method is idempotent for our use case because it won't
     // add the user if they already exist.
-    if (userService.Register(username, password, "Admin"))
+    if (await userService.RegisterAsync(username, password, "Admin"))
     {
         app.Logger.LogInformation("Default admin user '{Username}' created.", username);
     }
 }
 
-static void SeedWorkTicketData(WebApplication app)
+static async Task SeedWorkTicketDataAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -115,9 +115,9 @@ static void SeedWorkTicketData(WebApplication app)
             Activity = "Routine Maintenance",
             OperatorName = "John Doe",
             NumOperators = 1,
-            StartDateTime = "2023-10-26 08:00",
+            StartDateTime = new DateTime(2023, 10, 26, 8, 0, 0),
             StartCounter = 1000,
-            EndDateTime = "2023-10-26 10:00",
+            EndDateTime = new DateTime(2023, 10, 26, 10, 0, 0),
             EndCounter = 1050,
             QuantityIn = 50,
             QuantityOut = 48,
@@ -131,9 +131,9 @@ static void SeedWorkTicketData(WebApplication app)
             Activity = "Panel Inspection",
             OperatorName = "Jane Smith",
             NumOperators = 2,
-            StartDateTime = "2023-10-27 09:30",
+            StartDateTime = new DateTime(2023, 10, 27, 9, 30, 0),
             StartCounter = 500,
-            EndDateTime = "2023-10-27 11:00",
+            EndDateTime = new DateTime(2023, 10, 27, 11, 0, 0),
             EndCounter = 500,
             QuantityIn = 10,
             QuantityOut = 10,
@@ -144,7 +144,7 @@ static void SeedWorkTicketData(WebApplication app)
     };
 
     context.WorkTickets.AddRange(tickets);
-    context.SaveChanges();
+    await context.SaveChangesAsync();
     app.Logger.LogInformation("Finished seeding work ticket data.");
 }
 
@@ -185,6 +185,22 @@ static void ConfigureMiddleware(WebApplication app)
         .WithName("Logout")
         .WithSummary("Logout user")
         .RequireAuthorization();
+
+    // API endpoints for WorkTickets
+    var ticketsGroup = app.MapGroup("/api/tickets")
+        .WithName("WorkTickets")
+        .RequireAuthorization(); // Secure all ticket endpoints
+
+    ticketsGroup.MapGet("/", async (IWorkTicketService ticketService, int pageNumber = 1, int pageSize = 10) =>
+    {
+        return Results.Ok(await ticketService.GetWorkTicketsAsync(pageNumber, pageSize));
+    });
+
+    ticketsGroup.MapGet("/{id:int}", async (IWorkTicketService ticketService, int id) =>
+    {
+        var ticket = await ticketService.GetTicketByIdAsync(id);
+        return ticket is not null ? Results.Ok(ticket) : Results.NotFound();
+    });
 }
 
 static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
@@ -194,7 +210,7 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
         return Results.Redirect("/account/login?error=MissingCredentials");
     }
 
-    var principal = users.ValidateCredentials(creds.Username, creds.Password);
+    var principal = await users.ValidateCredentialsAsync(creds.Username, creds.Password);
     if (principal is null)
     {
         return Results.Redirect("/account/login?error=InvalidCredentials");
@@ -204,14 +220,14 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
     return Results.Redirect("/");
 }
 
-static IResult Register(IUserService users, LoginDto creds)
+static async Task<IResult> Register(IUserService users, LoginDto creds)
 {
     if (creds?.Username == null || creds?.Password == null)
     {
         return Results.BadRequest("Username and password are required");
     }
 
-    if (!users.Register(creds.Username, creds.Password))
+    if (!await users.RegisterAsync(creds.Username, creds.Password))
     {
         return Results.Conflict("User already exists");
     }
