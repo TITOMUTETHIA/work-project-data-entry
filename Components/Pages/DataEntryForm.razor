@@ -1,5 +1,6 @@
 @page "/tickets"
 @using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Components.Shared
 @inject IWorkTicketService TicketService
 @inject IJSRuntime JSRuntime
 @inject ModalService Modal
@@ -205,7 +206,11 @@ else
                 MaterialUsed = ticket.MaterialUsed,
                 DT = ticket.DT,
                 StartDateTime = ticket.StartDateTime,
-                EndDateTime = ticket.EndDateTime
+                EndDateTime = ticket.EndDateTime,
+                CreatedBy = ticket.CreatedBy,
+                CreatedAt = ticket.CreatedAt,
+                UpdatedBy = ticket.UpdatedBy,
+                UpdatedAt = ticket.UpdatedAt
             };
         }
     }

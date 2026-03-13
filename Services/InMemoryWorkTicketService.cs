@@ -7,7 +7,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
     private readonly List<WorkTicket> _tickets = new();
     private int _nextId = 1;
 
-    public Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true)
+    public Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null)
     {
         var query = _tickets.AsQueryable();
 
@@ -17,6 +17,16 @@ public class InMemoryWorkTicketService : IWorkTicketService
                 (t.TicketNumber != null && t.TicketNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                 (t.OperatorName != null && t.OperatorName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
                 (t.Activity != null && t.Activity.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Date filtering
+        if (startDate.HasValue)
+        {
+            query = query.Where(t => t.CreatedAt >= startDate.Value);
+        }
+        if (endDate.HasValue)
+        {
+            query = query.Where(t => t.CreatedAt <= endDate.Value);
         }
 
         // Apply sorting
@@ -92,6 +102,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
         var totalTickets = _tickets.Count;
+        var activeTickets = _tickets.Count(t => string.IsNullOrEmpty(t.EndDateTime));
 
         var ticketsCreatedLast7Days = _tickets
             .Count(t => t.DT != null && DateTime.TryParse(t.DT, out var dt) && dt >= sevenDaysAgo);
@@ -112,7 +123,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
             .Take(10)
             .ToList();
 
-        var metrics = new DashboardMetricsDto { TotalTickets = totalTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
+        var metrics = new DashboardMetricsDto { TotalTickets = totalTickets, ActiveTickets = activeTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
 
         return Task.FromResult(metrics);
     }

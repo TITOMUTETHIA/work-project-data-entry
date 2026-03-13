@@ -18,7 +18,7 @@ ConfigureServices(builder.Services);
 
 // Add DbContextFactory
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
 
 var app = builder.Build();
 
@@ -141,7 +141,8 @@ static async Task SeedWorkTicketDataAsync(WebApplication app)
                 QuantityOut = random.Next(10, 100),
                 MaterialUsed = "Consumables",
                 DT = createdAt.ToString("o"),
-                CreatedBy = "system"
+                CreatedBy = "system",
+                CreatedAt = createdAt
             });
         }
     }

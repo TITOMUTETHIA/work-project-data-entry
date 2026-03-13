@@ -13,7 +13,7 @@ public class WorkTicketService : IWorkTicketService
         _factory = factory;
     }
 
-    public async Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true)
+    public async Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null)
     {
         using var context = await _factory.CreateDbContextAsync();
         var query = context.WorkTickets.AsQueryable();
@@ -25,6 +25,16 @@ public class WorkTicketService : IWorkTicketService
                 (t.TicketNumber != null && t.TicketNumber.ToLower().Contains(lowerSearchTerm)) ||
                 (t.OperatorName != null && t.OperatorName.ToLower().Contains(lowerSearchTerm)) ||
                 (t.Activity != null && t.Activity.ToLower().Contains(lowerSearchTerm)));
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(t => t.CreatedAt >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(t => t.CreatedAt <= endDate.Value);
         }
 
         query = (sortBy?.ToLowerInvariant(), sortAscending) switch
@@ -101,6 +111,7 @@ public class WorkTicketService : IWorkTicketService
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
         var totalTickets = await context.WorkTickets.CountAsync();
+        var activeTickets = await context.WorkTickets.CountAsync(t => t.EndDateTime == null || t.EndDateTime == "");
         
         var sevenDaysAgoString = sevenDaysAgo.ToString("o");
         var ticketsCreatedLast7Days = await context.WorkTickets
@@ -122,6 +133,6 @@ public class WorkTicketService : IWorkTicketService
             .Take(10) // Take top 10 for clarity
             .ToListAsync();
 
-        return new DashboardMetricsDto { TotalTickets = totalTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
+        return new DashboardMetricsDto { TotalTickets = totalTickets, ActiveTickets = activeTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
     }
 }
