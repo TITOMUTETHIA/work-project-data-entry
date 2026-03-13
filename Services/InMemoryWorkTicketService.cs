@@ -7,19 +7,9 @@ public class InMemoryWorkTicketService : IWorkTicketService
     private readonly List<WorkTicket> _tickets = new();
     private int _nextId = 1;
 
-    public Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null)
+    public Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true)
     {
         var query = _tickets.AsQueryable();
-
-        if (startDate.HasValue)
-        {
-            query = query.Where(t => t.StartDateTime >= startDate.Value);
-        }
-
-        if (endDate.HasValue)
-        {
-            query = query.Where(t => t.StartDateTime < endDate.Value.AddDays(1));
-        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -40,9 +30,9 @@ public class InMemoryWorkTicketService : IWorkTicketService
             ("activity", false) => query.OrderByDescending(t => t.Activity),
             ("operatorname", true) => query.OrderBy(t => t.OperatorName),
             ("operatorname", false) => query.OrderByDescending(t => t.OperatorName),
-            ("startdatetime", true) => query.OrderBy(t => t.StartDateTime),
-            ("startdatetime", false) => query.OrderByDescending(t => t.StartDateTime),
-            _ => query.OrderByDescending(t => t.CreatedAt) // Default sort
+            ("dt", true) => query.OrderBy(t => t.DT),
+            ("dt", false) => query.OrderByDescending(t => t.DT),
+            _ => query.OrderByDescending(t => t.DT) // Default sort
         };
 
         var totalCount = query.Count();
@@ -54,7 +44,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
     public Task<WorkTicket> CreateWorkTicketAsync(WorkTicket ticket)
     {
         ticket.Id = _nextId++;
-        ticket.CreatedAt = DateTime.UtcNow;
+        ticket.DT = DateTime.UtcNow.ToString("o");
         _tickets.Add(ticket);
         return Task.FromResult(ticket);
     }
@@ -77,9 +67,8 @@ public class InMemoryWorkTicketService : IWorkTicketService
             {
                 // Ensure read-only and server-controlled fields are preserved/set correctly.
                 ticket.Id = existingTicket.Id;
-                ticket.CreatedAt = existingTicket.CreatedAt;
+                ticket.DT = existingTicket.DT;
                 ticket.CreatedBy = existingTicket.CreatedBy;
-                ticket.UpdatedAt = DateTime.UtcNow;
                 ticket.UpdatedBy = updatedBy;
 
                 _tickets[index] = ticket;
@@ -103,12 +92,9 @@ public class InMemoryWorkTicketService : IWorkTicketService
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
         var totalTickets = _tickets.Count;
-        
-        var activeTickets = _tickets
-            .Count(t => t.StartDateTime.HasValue && !t.EndDateTime.HasValue);
 
         var ticketsCreatedLast7Days = _tickets
-            .Count(t => t.CreatedAt >= sevenDaysAgo);
+            .Count(t => t.DT != null && DateTime.TryParse(t.DT, out var dt) && dt >= sevenDaysAgo);
 
         var ticketsByCostCentre = _tickets
             .Where(t => !string.IsNullOrEmpty(t.CostCentre))
@@ -126,7 +112,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
             .Take(10)
             .ToList();
 
-        var metrics = new DashboardMetricsDto { TotalTickets = totalTickets, ActiveTickets = activeTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
+        var metrics = new DashboardMetricsDto { TotalTickets = totalTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
 
         return Task.FromResult(metrics);
     }

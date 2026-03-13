@@ -1,0 +1,56 @@
+@using WorkTicketApp.Models
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="ticketNumber" class="form-label">Ticket Number</label>
+            <InputText id="ticketNumber" class="form-control" @bind-Value="Model.TicketNumber" />
+            <ValidationMessage For="@(() => Model.TicketNumber)" />
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="costCentre" class="form-label">Cost Centre</label>
+            <InputText id="costCentre" class="form-control" @bind-Value="Model.CostCentre" />
+            <ValidationMessage For="@(() => Model.CostCentre)" />
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="activity" class="form-label">Activity</label>
+            <InputText id="activity" class="form-control" @bind-Value="Model.Activity" />
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="operatorName" class="form-label">Operator Name</label>
+            <InputText id="operatorName" class="form-control" @bind-Value="Model.OperatorName" />
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-3"><div class="mb-3"><label class="form-label">Num Operators</label><InputNumber class="form-control" @bind-Value="Model.NumOperators" /></div></div>
+    <div class="col-md-3"><div class="mb-3"><label class="form-label">Start Counter</label><InputNumber class="form-control" @bind-Value="Model.StartCounter" /></div></div>
+    <div class="col-md-3">
+        <div class="mb-3">
+            <label class="form-label">End Counter</label>
+            <InputNumber class="form-control" @bind-Value="Model.EndCounter" />
+            <ValidationMessage For="@(() => Model.EndCounter)" />
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-3"><div class="mb-3"><label class="form-label">Quantity In</label><InputNumber class="form-control" @bind-Value="Model.QuantityIn" /></div></div>
+    <div class="col-md-3"><div class="mb-3"><label class="form-label">Quantity Out</label><InputNumber class="form-control" @bind-Value="Model.QuantityOut" /></div></div>
+</div>
+<div class="mb-3">
+    <label for="materialUsed" class="form-label">Material Used</label>
+    <InputTextArea id="materialUsed" class="form-control" @bind-Value="Model.MaterialUsed" />
+</div>
+
+@code {
+    [Parameter]
+    public WorkTicket Model { get; set; } = new();
+}

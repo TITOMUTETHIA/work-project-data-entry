@@ -27,6 +27,14 @@ var app = builder.Build();
 // Seed default admin user
 try
 {
+    // Reset the database to ensure seeding runs on a clean slate
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+    }
+
     await SeedUserDataAsync(app);
     await SeedWorkTicketDataAsync(app);
 }
@@ -71,25 +79,28 @@ static void ConfigureServices(IServiceCollection services)
 
 static async Task SeedUserDataAsync(WebApplication app)
 {
-    var config = app.Configuration.GetSection("AdminUser");
-    var username = config["Username"];
-    var password = config["Password"];
-
-    if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-    {
-        app.Logger.LogWarning("Admin user not configured in appsettings.json. Skipping seed.");
-        return;
-    }
-
     // Create a scope to resolve Scoped services
     using var scope = app.Services.CreateScope();
     var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-    // The Register method is idempotent for our use case because it won't
-    // add the user if they already exist.
-    if (await userService.RegisterAsync(username, password, "Admin"))
+    var config = app.Configuration.GetSection("AdminUser");
+    var username = config["Username"];
+    var password = config["Password"];
+
+    if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
     {
-        app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+        // The Register method is idempotent for our use case because it won't
+        // add the user if they already exist.
+        if (await userService.RegisterAsync(username, password, "Admin"))
+        {
+            app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+        }
+    }
+
+    // Seed 5 standard operators
+    for (int i = 1; i <= 5; i++)
+    {
+        await userService.RegisterAsync($"Operator{i}", "Password123!", "User");
     }
 }
 
@@ -107,41 +118,33 @@ static async Task SeedWorkTicketDataAsync(WebApplication app)
 
     app.Logger.LogInformation("Seeding work ticket data...");
 
-    var tickets = new List<WorkTicket>
+    var tickets = new List<WorkTicket>();
+    var random = new Random();
+    var costCentres = new[] { "CC-MECH", "CC-ELEC", "CC-CIVIL", "CC-ADMIN" };
+    var activities = new[] { "Routine Maintenance", "Panel Inspection", "Repair", "Cleaning", "Logistics" };
+
+    for (int i = 1; i <= 5; i++)
     {
-        new() {
-            TicketNumber = "TKT-001",
-            CostCentre = "CC-MECH",
-            Activity = "Routine Maintenance",
-            OperatorName = "John Doe",
-            NumOperators = 1,
-            StartDateTime = new DateTime(2023, 10, 26, 8, 0, 0),
-            StartCounter = 1000,
-            EndDateTime = new DateTime(2023, 10, 26, 10, 0, 0),
-            EndCounter = 1050,
-            QuantityIn = 50,
-            QuantityOut = 48,
-            MaterialUsed = "Oil, Filter",
-            CreatedAt = DateTime.UtcNow.AddDays(-2),
-            CreatedBy = "system"
-        },
-        new() {
-            TicketNumber = "TKT-002",
-            CostCentre = "CC-ELEC",
-            Activity = "Panel Inspection",
-            OperatorName = "Jane Smith",
-            NumOperators = 2,
-            StartDateTime = new DateTime(2023, 10, 27, 9, 30, 0),
-            StartCounter = 500,
-            EndDateTime = new DateTime(2023, 10, 27, 11, 0, 0),
-            EndCounter = 500,
-            QuantityIn = 10,
-            QuantityOut = 10,
-            MaterialUsed = "Cleaning supplies",
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            CreatedBy = "system"
+        var operatorName = $"Operator{i}";
+        for (int j = 1; j <= 20; j++)
+        {
+            var createdAt = DateTime.UtcNow.AddDays(-random.Next(0, 30)).Date.AddHours(random.Next(7, 15));
+            tickets.Add(new WorkTicket {
+                TicketNumber = $"TKT-{i}-{j:000}",
+                CostCentre = costCentres[random.Next(costCentres.Length)],
+                Activity = activities[random.Next(activities.Length)],
+                OperatorName = operatorName,
+                NumOperators = random.Next(1, 4),
+                StartCounter = random.Next(1000, 5000),
+                EndCounter = random.Next(5001, 9000),
+                QuantityIn = random.Next(10, 100),
+                QuantityOut = random.Next(10, 100),
+                MaterialUsed = "Consumables",
+                DT = createdAt.ToString("o"),
+                CreatedBy = "system"
+            });
         }
-    };
+    }
 
     context.WorkTickets.AddRange(tickets);
     await context.SaveChangesAsync();

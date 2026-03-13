@@ -16,15 +16,6 @@
             <button class="btn btn-outline-primary" @onclick="SearchTickets">Search</button>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="input-group">
-            <span class="input-group-text">From</span>
-            <input type="date" class="form-control" @bind="filterStartDate" />
-            <span class="input-group-text">To</span>
-            <input type="date" class="form-control" @bind="filterEndDate" />
-            <button class="btn btn-outline-secondary" @onclick="SearchTickets">Filter</button>
-        </div>
-    </div>
 </div>
 
 @if (tickets == null || tickets.Count == 0)
@@ -58,10 +49,9 @@ else
                 <th style="cursor: pointer" @onclick='() => SortBy("Activity")'>Activity @GetSortIcon("Activity")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("OperatorName")'>Operator @GetSortIcon("OperatorName")</th>
                 <th>Num Operators</th>
-                <th>Start</th>
-                <th>End</th>
                 <th>Qty In</th>
                 <th>Qty Out</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("DT")'>Date @GetSortIcon("DT")</th>
                 <th>Material Used</th>
                 <th>Actions</th>
             </tr>
@@ -75,10 +65,9 @@ else
                     <td>@t.Activity</td>
                     <td>@t.OperatorName</td>
                     <td>@t.NumOperators</td>
-                    <td>@t.StartDateTime?.ToString("MM/dd/yyyy HH:mm")</td>
-                    <td>@t.EndDateTime?.ToString("MM/dd/yyyy HH:mm")</td>
                     <td>@t.QuantityIn</td>
                     <td>@t.QuantityOut</td>
+                    <td>@FormatDate(t.DT)</td>
                     <td>@t.MaterialUsed</td>
                     <td>
                         @if (t.TicketNumber is not null)
@@ -123,10 +112,8 @@ else
     private int pageSize = 10;
     private int totalCount = 0;
     private int totalPages => totalCount == 0 ? 1 : (int)Math.Ceiling((double)totalCount / pageSize);
-    private string sortBy = "CreatedAt";
+    private string sortBy = "DT";
     private bool sortAscending = false;
-    private DateTime? filterStartDate = null;
-    private DateTime? filterEndDate = null;
     private CancellationTokenSource _searchCts = new();
 
     protected override async Task OnInitializedAsync()
@@ -136,7 +123,7 @@ else
 
     private async Task LoadTickets()
     {
-        var result = await TicketService.GetWorkTicketsAsync(currentPage, pageSize, searchTerm, sortBy, sortAscending, filterStartDate, filterEndDate);
+        var result = await TicketService.GetWorkTicketsAsync(currentPage, pageSize, searchTerm, sortBy, sortAscending);
         tickets = result.Items;
         totalCount = result.TotalCount;
     }
@@ -211,13 +198,14 @@ else
                 Activity = ticket.Activity,
                 OperatorName = ticket.OperatorName,
                 NumOperators = ticket.NumOperators,
-                StartDateTime = ticket.StartDateTime,
                 StartCounter = ticket.StartCounter,
-                EndDateTime = ticket.EndDateTime,
                 EndCounter = ticket.EndCounter,
                 QuantityIn = ticket.QuantityIn,
                 QuantityOut = ticket.QuantityOut,
-                MaterialUsed = ticket.MaterialUsed
+                MaterialUsed = ticket.MaterialUsed,
+                DT = ticket.DT,
+                StartDateTime = ticket.StartDateTime,
+                EndDateTime = ticket.EndDateTime
             };
         }
     }
@@ -235,6 +223,19 @@ else
             await LoadTickets();
         }
         CancelEdit();
+    }
+
+    private string? FormatDate(string? isoDate)
+    {
+        if (string.IsNullOrEmpty(isoDate))
+        {
+            return null;
+        }
+        if (DateTime.TryParse(isoDate, null, System.Globalization.DateTimeStyles.RoundtripKind, out var date))
+        {
+            return date.ToString("MM/dd/yyyy HH:mm");
+        }
+        return isoDate; // Fallback to original string if parsing fails
     }
 
     private void CancelEdit()
