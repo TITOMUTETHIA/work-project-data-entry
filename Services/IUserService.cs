@@ -13,6 +13,7 @@ namespace WorkTicketApp.Services
         Task<PagedResult<UserDto>> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true);
         Task<bool> DeleteUserAsync(string username);
         Task<bool> UpdateUserRoleAsync(string username, string role);
+        Task<bool> ResetPasswordAsync(string username, string newPassword);
 
         // Utility methods
         Task<List<UserDto>> GetAllUsersAsync(string? searchTerm = null, string? sortBy = null, bool sortAscending = true);

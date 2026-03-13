@@ -60,6 +60,7 @@ static void ConfigureServices(IServiceCollection services)
     // Application services
     services.AddScoped<IWorkTicketService, WorkTicketService>();
     services.AddScoped<IUserService, UserService>();
+    services.AddScoped<IAuditLogService, AuditLogService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
     services.AddHttpContextAccessor();
 

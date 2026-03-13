@@ -12,11 +12,15 @@ public class UserService : IUserService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _factory;
     private readonly ILogger<UserService> _logger;
+    private readonly IAuditLogService _auditLogService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public UserService(IDbContextFactory<ApplicationDbContext> factory, ILogger<UserService> logger)
+    public UserService(IDbContextFactory<ApplicationDbContext> factory, ILogger<UserService> logger, IAuditLogService auditLogService, IHttpContextAccessor httpContextAccessor)
     {
         _factory = factory;
         _logger = logger;
+        _auditLogService = auditLogService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<bool> RegisterAsync(string username, string password, string role = "User")
@@ -111,6 +115,10 @@ public class UserService : IUserService
 
         context.Users.Remove(user);
         await context.SaveChangesAsync();
+
+        var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
+        await _auditLogService.LogAsync(performedBy, "User Deleted", username, $"User '{username}' was deleted.");
+
         return true;
     }
 
@@ -120,8 +128,28 @@ public class UserService : IUserService
         var user = await context.Users.FirstOrDefaultAsync(u => u.Username == username);
         if (user == null) return false;
 
+        var oldRole = user.Role;
         user.Role = role;
         await context.SaveChangesAsync();
+
+        var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
+        await _auditLogService.LogAsync(performedBy, "User Role Changed", username, $"Changed role for user '{username}' from '{oldRole}' to '{role}'.");
+
+        return true;
+    }
+
+    public async Task<bool> ResetPasswordAsync(string username, string newPassword)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (user == null) return false;
+
+        user.Password = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        await context.SaveChangesAsync();
+
+        var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
+        await _auditLogService.LogAsync(performedBy, "Password Reset", username, $"Password reset for user '{username}'.");
+
         return true;
     }
 

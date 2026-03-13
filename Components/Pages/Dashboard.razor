@@ -2,8 +2,10 @@
 @using Microsoft.AspNetCore.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
 @inject IWorkTicketService TicketService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -93,6 +95,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        metrics = await TicketService.GetDashboardMetricsAsync();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        string? usernameFilter = null;
+
+        // If not Admin, filter metrics by the logged-in user
+        if (!user.IsInRole("Admin"))
+        {
+            usernameFilter = user.Identity?.Name;
+        }
+
+        metrics = await TicketService.GetDashboardMetricsAsync(usernameFilter);
     }
 }

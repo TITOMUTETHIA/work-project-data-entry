@@ -105,19 +105,26 @@ public class WorkTicketService : IWorkTicketService
         }
     }
 
-    public async Task<DashboardMetricsDto> GetDashboardMetricsAsync()
+    public async Task<DashboardMetricsDto> GetDashboardMetricsAsync(string? username = null)
     {
         using var context = await _factory.CreateDbContextAsync();
+        var query = context.WorkTickets.AsQueryable();
+
+        if (!string.IsNullOrEmpty(username))
+        {
+            query = query.Where(t => t.CreatedBy == username);
+        }
+
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
-        var totalTickets = await context.WorkTickets.CountAsync();
-        var activeTickets = await context.WorkTickets.CountAsync(t => t.EndDateTime == null || t.EndDateTime == "");
+        var totalTickets = await query.CountAsync();
+        var activeTickets = await query.CountAsync(t => t.EndDateTime == null || t.EndDateTime == "");
         
         var sevenDaysAgoString = sevenDaysAgo.ToString("o");
-        var ticketsCreatedLast7Days = await context.WorkTickets
+        var ticketsCreatedLast7Days = await query
             .CountAsync(t => t.DT != null && t.DT.CompareTo(sevenDaysAgoString) >= 0);
 
-        var ticketsByCostCentre = await context.WorkTickets
+        var ticketsByCostCentre = await query
             .Where(t => t.CostCentre != null)
             .GroupBy(t => t.CostCentre)
             .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
@@ -125,7 +132,7 @@ public class WorkTicketService : IWorkTicketService
             .Take(10) // Take top 10 for clarity
             .ToListAsync();
 
-        var ticketsByOperator = await context.WorkTickets
+        var ticketsByOperator = await query
             .Where(t => t.OperatorName != null)
             .GroupBy(t => t.OperatorName)
             .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })

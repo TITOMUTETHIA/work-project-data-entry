@@ -97,17 +97,24 @@ public class InMemoryWorkTicketService : IWorkTicketService
         return Task.CompletedTask;
     }
 
-    public Task<DashboardMetricsDto> GetDashboardMetricsAsync()
+    public Task<DashboardMetricsDto> GetDashboardMetricsAsync(string? username = null)
     {
+        var query = _tickets.AsQueryable();
+
+        if (!string.IsNullOrEmpty(username))
+        {
+            query = query.Where(t => t.CreatedBy == username);
+        }
+
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
-        var totalTickets = _tickets.Count;
-        var activeTickets = _tickets.Count(t => string.IsNullOrEmpty(t.EndDateTime));
+        var totalTickets = query.Count();
+        var activeTickets = query.Count(t => string.IsNullOrEmpty(t.EndDateTime));
 
-        var ticketsCreatedLast7Days = _tickets
+        var ticketsCreatedLast7Days = query
             .Count(t => t.DT != null && DateTime.TryParse(t.DT, out var dt) && dt >= sevenDaysAgo);
 
-        var ticketsByCostCentre = _tickets
+        var ticketsByCostCentre = query
             .Where(t => !string.IsNullOrEmpty(t.CostCentre))
             .GroupBy(t => t.CostCentre)
             .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
@@ -115,7 +122,7 @@ public class InMemoryWorkTicketService : IWorkTicketService
             .Take(10)
             .ToList();
 
-        var ticketsByOperator = _tickets
+        var ticketsByOperator = query
             .Where(t => !string.IsNullOrEmpty(t.OperatorName))
             .GroupBy(t => t.OperatorName)
             .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
