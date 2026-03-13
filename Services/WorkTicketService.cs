@@ -61,7 +61,9 @@ public class WorkTicketService : IWorkTicketService
     public async Task<WorkTicket> CreateWorkTicketAsync(WorkTicket ticket)
     {
         using var context = await _factory.CreateDbContextAsync();
-        ticket.DT = DateTime.UtcNow.ToString("o"); // ISO 8601 format
+        var now = DateTime.UtcNow;
+        ticket.DT = now.ToString("o"); // ISO 8601 format
+        ticket.CreatedAt = now;
         context.WorkTickets.Add(ticket);
         await context.SaveChangesAsync();
         return ticket;
@@ -84,11 +86,13 @@ public class WorkTicketService : IWorkTicketService
 
             // Explicitly set audit fields that should be controlled by the server.
             existing.UpdatedBy = updatedBy;
+            existing.UpdatedAt = DateTime.UtcNow;
 
             // Ensure read-only fields are not modified by the incoming request.
             // This prevents over-posting vulnerabilities.
             context.Entry(existing).Property(p => p.DT).IsModified = false;
             context.Entry(existing).Property(p => p.CreatedBy).IsModified = false;
+            context.Entry(existing).Property(p => p.CreatedAt).IsModified = false;
 
             await context.SaveChangesAsync();
         }

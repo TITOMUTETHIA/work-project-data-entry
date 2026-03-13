@@ -1,8 +1,11 @@
 @page "/tickets"
 @using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
 @using WorkTicketApp.Components.Shared
+@using WorkTicketApp.Components
+@using Microsoft.AspNetCore.Components.Forms
 @inject IWorkTicketService TicketService
-@inject IJSRuntime JSRuntime
 @inject ModalService Modal
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]

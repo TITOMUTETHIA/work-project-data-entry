@@ -75,13 +75,13 @@
                                 {
                                     @if (user.Role != "Admin")
                                     {
-                                        <button class="btn btn-outline-success btn-sm me-2" @onclick="() => ChangeRole(user, \"Admin\")" title="Promote to Admin">
+                                        <button class="btn btn-outline-success btn-sm me-2" @onclick='() => ChangeRole(user, "Admin")' title="Promote to Admin">
                                             Promote to Admin
                                         </button>
                                     }
                                     else
                                     {
-                                        <button class="btn btn-outline-warning btn-sm me-2" @onclick="() => ChangeRole(user, \"User\")" title="Demote to User">
+                                        <button class="btn btn-outline-warning btn-sm me-2" @onclick='() => ChangeRole(user, "User")' title="Demote to User">
                                             Demote to User
                                         </button>
                                     }

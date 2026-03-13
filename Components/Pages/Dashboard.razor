@@ -14,7 +14,12 @@
 
 @if (metrics == null)
 {
-    <p><em>Loading metrics...</em></p>
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading metrics...</p>
+    </div>
 }
 else
 {

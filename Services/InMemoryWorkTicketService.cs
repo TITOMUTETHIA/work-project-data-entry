@@ -54,7 +54,9 @@ public class InMemoryWorkTicketService : IWorkTicketService
     public Task<WorkTicket> CreateWorkTicketAsync(WorkTicket ticket)
     {
         ticket.Id = _nextId++;
-        ticket.DT = DateTime.UtcNow.ToString("o");
+        var now = DateTime.UtcNow;
+        ticket.DT = now.ToString("o");
+        ticket.CreatedAt = now;
         _tickets.Add(ticket);
         return Task.FromResult(ticket);
     }
@@ -79,7 +81,9 @@ public class InMemoryWorkTicketService : IWorkTicketService
                 ticket.Id = existingTicket.Id;
                 ticket.DT = existingTicket.DT;
                 ticket.CreatedBy = existingTicket.CreatedBy;
+                ticket.CreatedAt = existingTicket.CreatedAt;
                 ticket.UpdatedBy = updatedBy;
+                ticket.UpdatedAt = DateTime.UtcNow;
 
                 _tickets[index] = ticket;
             }
@@ -111,8 +115,8 @@ public class InMemoryWorkTicketService : IWorkTicketService
         var totalTickets = query.Count();
         var activeTickets = query.Count(t => string.IsNullOrEmpty(t.EndDateTime));
 
-        var ticketsCreatedLast7Days = query
-            .Count(t => t.DT != null && DateTime.TryParse(t.DT, out var dt) && dt >= sevenDaysAgo);
+        var sevenDaysAgoString = sevenDaysAgo.ToString("o");
+        var ticketsCreatedLast7Days = query.Count(t => t.DT != null && t.DT.CompareTo(sevenDaysAgoString) >= 0);
 
         var ticketsByCostCentre = query
             .Where(t => !string.IsNullOrEmpty(t.CostCentre))

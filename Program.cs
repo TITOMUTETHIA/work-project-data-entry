@@ -61,6 +61,7 @@ static void ConfigureServices(IServiceCollection services)
     services.AddScoped<IWorkTicketService, WorkTicketService>();
     services.AddScoped<IUserService, UserService>();
     services.AddScoped<IAuditLogService, AuditLogService>();
+    services.AddScoped<ModalService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
     services.AddHttpContextAccessor();
 
@@ -190,22 +191,6 @@ static void ConfigureMiddleware(WebApplication app)
         .WithName("Logout")
         .WithSummary("Logout user")
         .RequireAuthorization();
-
-    // API endpoints for WorkTickets
-    var ticketsGroup = app.MapGroup("/api/tickets")
-        .WithName("WorkTickets")
-        .RequireAuthorization(); // Secure all ticket endpoints
-
-    ticketsGroup.MapGet("/", async (IWorkTicketService ticketService, int pageNumber = 1, int pageSize = 10) =>
-    {
-        return Results.Ok(await ticketService.GetWorkTicketsAsync(pageNumber, pageSize));
-    });
-
-    ticketsGroup.MapGet("/{id:int}", async (IWorkTicketService ticketService, int id) =>
-    {
-        var ticket = await ticketService.GetTicketByIdAsync(id);
-        return ticket is not null ? Results.Ok(ticket) : Results.NotFound();
-    });
 }
 
 static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
