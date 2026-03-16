@@ -1,19 +1,24 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 using System.Security.Claims;
 
 namespace WorkTicketApp.Authentication;
 
-public sealed class ServerAuthenticationStateProvider(IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
+public class ServerAuthenticationStateProvider : AuthenticationStateProvider, IHostEnvironmentAuthenticationStateProvider
 {
-    public override Task<AuthenticationState> GetAuthenticationStateAsync()
+    private Task<AuthenticationState> _authenticationStateTask;
+
+    public ServerAuthenticationStateProvider()
     {
-        var user = httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
-        return Task.FromResult(new AuthenticationState(user));
+        var unauthenticated = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+        _authenticationStateTask = Task.FromResult(unauthenticated);
     }
 
-    public void NotifyAuthenticationStateChanged()
+    public override Task<AuthenticationState> GetAuthenticationStateAsync() => _authenticationStateTask;
+
+    public void SetAuthenticationState(Task<AuthenticationState> authenticationStateTask)
     {
-        var user = httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
+        _authenticationStateTask = authenticationStateTask ?? throw new ArgumentNullException(nameof(authenticationStateTask));
+        NotifyAuthenticationStateChanged(_authenticationStateTask);
     }
 }

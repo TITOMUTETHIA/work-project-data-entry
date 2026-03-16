@@ -26,7 +26,7 @@ public class UserService : IUserService
     public async Task<bool> RegisterAsync(string username, string password, string role = "User")
     {
         await using var context = await _factory.CreateDbContextAsync();
-        if (await context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
+        if (await context.Users.AnyAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
         {
             _logger.LogWarning("Registration failed: Username '{Username}' already exists.", username);
             return false;
@@ -48,7 +48,7 @@ public class UserService : IUserService
     public async Task<ClaimsPrincipal?> ValidateCredentialsAsync(string username, string password)
     {
         await using var context = await _factory.CreateDbContextAsync();
-        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
         {
@@ -75,28 +75,21 @@ public class UserService : IUserService
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var lowerSearchTerm = searchTerm.ToLower();
-            query = query.Where(u => u.Username.ToLower().Contains(lowerSearchTerm) || u.Role.ToLower().Contains(lowerSearchTerm));
+            // Use EF.Functions.Like for case-insensitive search, relying on the database's collation.
+            // This is generally more performant than client-side ToLower().
+            query = query.Where(u => EF.Functions.Like(u.Username, $"%{searchTerm}%") || EF.Functions.Like(u.Role, $"%{searchTerm}%"));
         }
 
-        sortBy ??= "Username";
-
-        try
+        // Refactor sorting to use a type-safe switch expression instead of reflection.
+        // This is faster, more maintainable, and prevents sorting on unintended properties.
+        var orderedQuery = (sortBy?.ToLowerInvariant()) switch
         {
-            var parameter = Expression.Parameter(typeof(User), "u");
-            var propertyInfo = typeof(User).GetProperty(sortBy, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance) 
-                ?? throw new ArgumentException($"Property '{sortBy}' not found on type 'User'.");
-            
-            var property = Expression.Property(parameter, propertyInfo);
-            var lambda = Expression.Lambda<Func<User, object>>(Expression.Convert(property, typeof(object)), parameter);
-
-            query = sortAscending ? query.OrderBy(lambda) : query.OrderByDescending(lambda);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning("Invalid sort column '{SortBy}'. Defaulting to sort by Username. Error: {Error}", sortBy, ex.Message);
-            query = query.OrderBy(u => u.Username);
-        }
+            "role" => sortAscending ? query.OrderBy(u => u.Role) : query.OrderByDescending(u => u.Role),
+            _ => sortAscending ? query.OrderBy(u => u.Username) : query.OrderByDescending(u => u.Username),
+        };
+        
+        // Add a secondary sort for stable ordering.
+        query = orderedQuery.ThenBy(u => u.Id);
 
         var totalCount = await query.CountAsync();
         var users = await query
@@ -169,13 +162,18 @@ public class UserService : IUserService
 
     public Task AddUserAsync(User user) => RegisterAsync(user.Username, user.Password, user.Role);
 
+    /// <summary>
+    /// This method is inefficient as it performs two database lookups.
+    /// Consider refactoring validation logic to fetch the user only once if this method is required.
+    /// </summary>
     public async Task<User?> ValidateUserAsync(string username, string password)
     {
         var principal = await ValidateCredentialsAsync(username, password);
         if (principal == null) return null;
 
         await using var context = await _factory.CreateDbContextAsync();
-        return await context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        // This second database call is redundant because ValidateCredentialsAsync already fetched the user.
+        return await context.Users.FirstOrDefaultAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<bool> UpdateProfileAsync(string username, string newUsername)

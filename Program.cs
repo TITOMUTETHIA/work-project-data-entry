@@ -13,28 +13,8 @@ using WorkTicketApp.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure database
-
 // Configure services
-ConfigureServices(builder.Services);
-
-// Add DbContextFactory
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-var isDevelopment = builder.Environment.IsDevelopment();
-
-// If dev config is still pointing at LocalDB and LocalDB isn't installed, fallback to SQLite.
-if (isDevelopment && connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase))
-{
-    connectionString = "Data Source=workticket-dev.db";
-}
-
-if (connectionString.Contains("Data Source", StringComparison.OrdinalIgnoreCase))
-{
-    builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlite(connectionString));
-}
-else
-{
-    builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
-}
+ConfigureServices(builder);
 
 var app = builder.Build();
 
@@ -63,8 +43,30 @@ ConfigureMiddleware(app);
 
 await app.RunAsync();
 
-static void ConfigureServices(IServiceCollection services)
+static void ConfigureServices(WebApplicationBuilder builder)
 {
+    var services = builder.Services;
+    var configuration = builder.Configuration;
+    var environment = builder.Environment;
+
+    // Add DbContextFactory
+    var connectionString = configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+    // If dev config is still pointing at LocalDB and LocalDB isn't installed, fallback to SQLite.
+    if (environment.IsDevelopment() && connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase))
+    {
+        connectionString = "Data Source=workticket-dev.db";
+    }
+
+    if (connectionString.Contains("Data Source", StringComparison.OrdinalIgnoreCase))
+    {
+        services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+    }
+    else
+    {
+        services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+    }
+
     // Blazor components
     services.AddRazorComponents()
         .AddInteractiveServerComponents();
@@ -207,21 +209,20 @@ static void ConfigureMiddleware(WebApplication app)
 
     authGroup.MapPost("/logout", (Delegate)Logout)
         .WithName("Logout")
-        .WithSummary("Logout user")
-        .RequireAuthorization("AdminOnly");
+        .WithSummary("Logout user");
 }
 
 static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
 {
-    if (creds?.Username == null || creds?.Password == null)
+    if (string.IsNullOrWhiteSpace(creds.Username) || string.IsNullOrWhiteSpace(creds.Password))
     {
-        return Results.Redirect("/account/login?error=MissingCredentials");
+        return Results.BadRequest(new { error = "MissingCredentials", message = "Username and password are required." });
     }
 
     var principal = await users.ValidateCredentialsAsync(creds.Username, creds.Password);
     if (principal is null)
     {
-        return Results.Redirect("/account/login?error=InvalidCredentials");
+        return Results.Json(new { error = "InvalidCredentials", message = "Invalid username or password." }, statusCode: 401);
     }
 
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
@@ -230,17 +231,17 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
 
 static async Task<IResult> Register(IUserService users, LoginDto creds)
 {
-    if (creds?.Username == null || creds?.Password == null)
+    if (string.IsNullOrWhiteSpace(creds.Username) || string.IsNullOrWhiteSpace(creds.Password))
     {
-        return Results.BadRequest("Username and password are required");
+        return Results.BadRequest(new { error = "ValidationFailed", message = "Username and password are required." });
     }
 
     if (!await users.RegisterAsync(creds.Username, creds.Password))
     {
-        return Results.Conflict("User already exists");
+        return Results.Conflict(new { error = "UserExists", message = "User already exists." });
     }
 
-    return Results.Ok();
+    return Results.Ok(new { message = "Registration successful" });
 }
 
 static async Task<IResult> Logout(HttpContext ctx)
