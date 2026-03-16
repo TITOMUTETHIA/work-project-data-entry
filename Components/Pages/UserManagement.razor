@@ -1,131 +1,274 @@
-@page "/admin/users"
+@page "/users"
 @using Microsoft.AspNetCore.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Admin")]
 @inject IUserService UserService
-@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using WorkTicketApp.Components
 
 <PageTitle>User Management</PageTitle>
 
-<h1>User Management</h1>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>User Management</h1>
+    </div>
 
-<p>This page lists all users registered in the system.</p>
-
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search by username..." @bind="_searchTerm" @onkeyup.Enter="SearchUsers" />
-            <button class="btn btn-primary" @onclick="SearchUsers">Search</button>
-            <button class="btn btn-secondary" @onclick="ClearSearchAsync">Clear</button>
-            <button class="btn btn-success" @onclick="ExportUsers">Export CSV</button>
+    <div class="card p-3 mb-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Search by username..." 
+                           @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                </div>
+            </div>
         </div>
     </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (users.Count == 0)
+    {
+        <div class="alert alert-info">No users found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users)
+                    {
+                        <tr>
+                            <td>
+                                <span class="fw-bold">@user.Username</span>
+                                @if (user.Username == currentUsername)
+                                {
+                                    <span class="badge bg-secondary ms-2">You</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.Role == "Admin")
+                                {
+                                    <span class="badge bg-danger">Admin</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-primary">User</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (user.Username != currentUsername)
+                                {
+                                    @if (user.Role != "Admin")
+                                    {
+                                        <button class="btn btn-outline-success btn-sm me-2" @onclick='() => ChangeRole(user, "Admin")' title="Promote to Admin">
+                                            Promote to Admin
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-warning btn-sm me-2" @onclick='() => ChangeRole(user, "User")' title="Demote to User">
+                                            Demote to User
+                                        </button>
+                                    }
+                                    <button class="btn btn-outline-info btn-sm me-2" @onclick="() => OpenResetModal(user)" title="Reset Password">
+                                        Reset Pass
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => OpenDeleteConfirmation(user)" title="Delete User">
+                                        Delete
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted fst-italic">Cannot edit self</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages > 1)
+        {
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => LoadUsers(currentPage - 1)">Previous</button>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">Page @currentPage of @totalPages</span>
+                    </li>
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => LoadUsers(currentPage + 1)">Next</button>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
 </div>
 
-<DataGrid @ref="_grid" TItem="UserDto" DataProvider="GetUserData" InitialSortColumn="Username">
-    <HeaderTemplate>
-        <tr>
-            <SortableHeader TItem="UserDto" ColumnName="Username">Username</SortableHeader>
-            <SortableHeader TItem="UserDto" ColumnName="Role">Role</SortableHeader>
-            <th>Actions</th>
-        </tr>
-    </HeaderTemplate>
-    <RowTemplate>
-        <tr>
-            <td>@context.Username</td>
-            <td>
-                @if (context.Username != _currentUsername)
-                {
-                    <select class="form-select form-select-sm" value="@context.Role" @onchange="@(e => UpdateRoleAsync(context.Username, e.Value?.ToString()))">
-                        <option value="User">User</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                }
-                else
-                {
-                    @context.Role <span class="text-muted">(You)</span>
-                }
-            </td>
-            <td>
-                @if (context.Username != _currentUsername)
-                {
-                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteUserAsync(context.Username)">Delete</button>
-                }
-                else
-                {
-                    <span class="text-muted">Current User</span>
-                }
-            </td>
-        </tr>
-    </RowTemplate>
-</DataGrid>
+@if (showDeleteModal && selectedUserForDelete != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete @selectedUserForDelete.Username</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDeleteConfirmation"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete user <strong>@selectedUserForDelete.Username</strong>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDeleteConfirmation">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteUser">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showResetModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reset Password for @selectedUserForReset?.Username</h5>
+                    <button type="button" class="btn-close" @onclick="CloseResetModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="text" class="form-control" @bind="newPassword" placeholder="Enter new password" />
+                        <small class="text-muted">Enter the new password for the user.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseResetModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmResetPassword">Reset Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationState { get; set; }
-
-    private DataGrid<UserDto>? _grid;
-    private string? _searchTerm;
-    private string? _currentUsername;
+    private List<UserDto> users = new();
+    private string searchTerm = "";
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalCount = 0;
+    private int totalPages => (int)Math.Ceiling((double)totalCount / pageSize);
+    private bool isLoading = true;
+    private string? currentUsername;
+    private bool showDeleteModal = false;
+    private UserDto? selectedUserForDelete;
+    private bool showResetModal = false;
+    private UserDto? selectedUserForReset;
+    private string newPassword = "";
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationState!;
-        _currentUsername = authState.User.Identity?.Name;
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUsername = authState.User.Identity?.Name;
+        await LoadUsers(1);
     }
 
-    private Task<PagedResult<UserDto>> GetUserData(int page, int pageSize, string sortBy, bool sortAscending)
+    private async Task HandleSearch()
     {
-        return Task.FromResult(UserService.GetUsers(page, pageSize, _searchTerm, sortBy, sortAscending));
+        await LoadUsers(1);
     }
 
-    private async Task DeleteUserAsync(string username)
+    private async Task LoadUsers(int page)
     {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the user '{username}'?");
-        if (confirmed)
+        if (page < 1) page = 1;
+        currentPage = page;
+        isLoading = true;
+        
+        var result = await UserService.GetUsersAsync(currentPage, pageSize, searchTerm);
+        users = result.Items;
+        totalCount = result.TotalCount;
+        
+        isLoading = false;
+    }
+
+    private async Task ChangeRole(UserDto user, string newRole)
+    {
+        var success = await UserService.UpdateUserRoleAsync(user.Username, newRole);
+        if (success)
         {
-            if (UserService.DeleteUser(username))
+            await LoadUsers(currentPage);
+        }
+    }
+
+     private void OpenDeleteConfirmation(UserDto user)
+    {
+        selectedUserForDelete = user;
+        showDeleteModal = true;
+    }
+
+    private void CloseDeleteConfirmation()
+    {
+        showDeleteModal = false;
+        selectedUserForDelete = null;
+    }
+
+    private async Task ConfirmDeleteUser()
+    {
+        if (selectedUserForDelete != null)
+        {
+            var success = await UserService.DeleteUserAsync(selectedUserForDelete.Username);
+            if (success)
             {
-                await _grid!.RefreshDataAsync();
+                await LoadUsers(currentPage);
             }
+            CloseDeleteConfirmation();
         }
-    }
-
-    private async Task UpdateRoleAsync(string username, string? newRole)
-    {
-        if (!string.IsNullOrEmpty(newRole))
+        else
         {
-            UserService.UpdateUserRole(username, newRole);
-            await _grid!.RefreshDataAsync();
+            // Log an error or display a message indicating that the user to delete is not selected
+            Console.WriteLine("Error: No user selected for deletion.");
         }
     }
 
-    private async Task SearchUsers()
+    private void OpenResetModal(UserDto user)
     {
-        await _grid!.RefreshDataAsync();
+        selectedUserForReset = user;
+        newPassword = "";
+        showResetModal = true;
     }
 
-    private async Task ClearSearchAsync()
+    private void CloseResetModal()
     {
-        _searchTerm = string.Empty;
-        await _grid!.RefreshDataAsync();
+        showResetModal = false;
+        selectedUserForReset = null;
+        newPassword = "";
     }
 
-    private async Task ExportUsers()
+    private async Task ConfirmResetPassword()
     {
-        var users = UserService.GetAllUsers(_searchTerm, _grid!.CurrentSortBy, _grid!.IsSortAscending);
-        var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Username,Role");
-        
-        foreach (var user in users)
+        if (selectedUserForReset != null && !string.IsNullOrWhiteSpace(newPassword))
         {
-            csv.AppendLine($"\"{user.Username}\",\"{user.Role}\"");
+            await UserService.ResetPasswordAsync(selectedUserForReset.Username, newPassword);
+            CloseResetModal();
         }
-
-        // Define a temporary download function in JS if it doesn't exist, then call it.
-        await JSRuntime.InvokeVoidAsync("eval", "window.downloadCsv = window.downloadCsv || function(filename, content) { var link = document.createElement('a'); link.download = filename; link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content); document.body.appendChild(link); link.click(); document.body.removeChild(link); }");
-        
-        await JSRuntime.InvokeVoidAsync("downloadCsv", "users.csv", csv.ToString());
     }
 }

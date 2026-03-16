@@ -3,6 +3,7 @@ using WorkTicketApp.Services;
 using WorkTicketApp.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using WorkTicketApp.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +19,22 @@ ConfigureServices(builder.Services);
 
 // Add DbContextFactory
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+var isDevelopment = builder.Environment.IsDevelopment();
+
+// If dev config is still pointing at LocalDB and LocalDB isn't installed, fallback to SQLite.
+if (isDevelopment && connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase))
+{
+    connectionString = "Data Source=workticket-dev.db";
+}
+
+if (connectionString.Contains("Data Source", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+}
+else
+{
+    builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+}
 
 var app = builder.Build();
 
@@ -27,8 +43,16 @@ var app = builder.Build();
 // Seed default admin user
 try
 {
-    SeedUserData(app);
-    SeedWorkTicketData(app);
+    // Reset the database to ensure seeding runs on a clean slate
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+    }
+
+    await SeedUserDataAsync(app);
+    await SeedWorkTicketDataAsync(app);
 }
 catch (Exception ex)
 {
@@ -52,6 +76,8 @@ static void ConfigureServices(IServiceCollection services)
     // Application services
     services.AddScoped<IWorkTicketService, WorkTicketService>();
     services.AddScoped<IUserService, UserService>();
+    services.AddScoped<IAuditLogService, AuditLogService>();
+    services.AddScoped<ModalService>();
     services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
     services.AddHttpContextAccessor();
 
@@ -66,34 +92,40 @@ static void ConfigureServices(IServiceCollection services)
             options.ExpireTimeSpan = TimeSpan.FromDays(7);
         });
 
-    services.AddAuthorizationBuilder();
+    services.AddAuthorizationBuilder()
+        .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+        .AddPolicy("MinimumAge", policy => policy.Requirements.Add(new MinimumAgeRequirement(21)));
+    services.AddSingleton<IAuthorizationHandler, MinimumAgeHandler>();
 }
 
-static void SeedUserData(WebApplication app)
+static async Task SeedUserDataAsync(WebApplication app)
 {
-    var config = app.Configuration.GetSection("AdminUser");
-    var username = config["Username"];
-    var password = config["Password"];
-
-    if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-    {
-        app.Logger.LogWarning("Admin user not configured in appsettings.json. Skipping seed.");
-        return;
-    }
-
     // Create a scope to resolve Scoped services
     using var scope = app.Services.CreateScope();
     var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-    // The Register method is idempotent for our use case because it won't
-    // add the user if they already exist.
-    if (userService.Register(username, password, "Admin"))
+    var config = app.Configuration.GetSection("AdminUser");
+    var username = config["Username"];
+    var password = config["Password"];
+
+    if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
     {
-        app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+        // The Register method is idempotent for our use case because it won't
+        // add the user if they already exist.
+        if (await userService.RegisterAsync(username, password, "Admin"))
+        {
+            app.Logger.LogInformation("Default admin user '{Username}' created.", username);
+        }
+    }
+
+    // Seed 5 standard operators
+    for (int i = 1; i <= 5; i++)
+    {
+        await userService.RegisterAsync($"Operator{i}", "Password123!", "User");
     }
 }
 
-static void SeedWorkTicketData(WebApplication app)
+static async Task SeedWorkTicketDataAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -107,44 +139,37 @@ static void SeedWorkTicketData(WebApplication app)
 
     app.Logger.LogInformation("Seeding work ticket data...");
 
-    var tickets = new List<WorkTicket>
+    var tickets = new List<WorkTicket>();
+    var random = new Random();
+    var costCentres = new[] { "CC-MECH", "CC-ELEC", "CC-CIVIL", "CC-ADMIN" };
+    var activities = new[] { "Routine Maintenance", "Panel Inspection", "Repair", "Cleaning", "Logistics" };
+
+    for (int i = 1; i <= 5; i++)
     {
-        new() {
-            TicketNumber = "TKT-001",
-            CostCentre = "CC-MECH",
-            Activity = "Routine Maintenance",
-            OperatorName = "John Doe",
-            NumOperators = 1,
-            StartDateTime = "2023-10-26 08:00",
-            StartCounter = 1000,
-            EndDateTime = "2023-10-26 10:00",
-            EndCounter = 1050,
-            QuantityIn = 50,
-            QuantityOut = 48,
-            MaterialUsed = "Oil, Filter",
-            CreatedAt = DateTime.UtcNow.AddDays(-2),
-            CreatedBy = "system"
-        },
-        new() {
-            TicketNumber = "TKT-002",
-            CostCentre = "CC-ELEC",
-            Activity = "Panel Inspection",
-            OperatorName = "Jane Smith",
-            NumOperators = 2,
-            StartDateTime = "2023-10-27 09:30",
-            StartCounter = 500,
-            EndDateTime = "2023-10-27 11:00",
-            EndCounter = 500,
-            QuantityIn = 10,
-            QuantityOut = 10,
-            MaterialUsed = "Cleaning supplies",
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            CreatedBy = "system"
+        var operatorName = $"Operator{i}";
+        for (int j = 1; j <= 20; j++)
+        {
+            var createdAt = DateTime.UtcNow.AddDays(-random.Next(0, 30)).Date.AddHours(random.Next(7, 15));
+            tickets.Add(new WorkTicket {
+                TicketNumber = $"TKT-{i}-{j:000}",
+                CostCentre = costCentres[random.Next(costCentres.Length)],
+                Activity = activities[random.Next(activities.Length)],
+                OperatorName = operatorName,
+                NumOperators = random.Next(1, 4),
+                StartCounter = random.Next(1000, 5000),
+                EndCounter = random.Next(5001, 9000),
+                QuantityIn = random.Next(10, 100),
+                QuantityOut = random.Next(10, 100),
+                MaterialUsed = "Consumables",
+                DT = createdAt.ToString("o"),
+                CreatedBy = "system",
+                CreatedAt = createdAt
+            });
         }
-    };
+    }
 
     context.WorkTickets.AddRange(tickets);
-    context.SaveChanges();
+    await context.SaveChangesAsync();
     app.Logger.LogInformation("Finished seeding work ticket data.");
 }
 
@@ -184,7 +209,7 @@ static void ConfigureMiddleware(WebApplication app)
     authGroup.MapPost("/logout", (Delegate)Logout)
         .WithName("Logout")
         .WithSummary("Logout user")
-        .RequireAuthorization();
+        .RequireAuthorization("AdminOnly");
 }
 
 static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
@@ -194,7 +219,7 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
         return Results.Redirect("/account/login?error=MissingCredentials");
     }
 
-    var principal = users.ValidateCredentials(creds.Username, creds.Password);
+    var principal = await users.ValidateCredentialsAsync(creds.Username, creds.Password);
     if (principal is null)
     {
         return Results.Redirect("/account/login?error=InvalidCredentials");
@@ -204,14 +229,14 @@ static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm]
     return Results.Redirect("/");
 }
 
-static IResult Register(IUserService users, LoginDto creds)
+static async Task<IResult> Register(IUserService users, LoginDto creds)
 {
     if (creds?.Username == null || creds?.Password == null)
     {
         return Results.BadRequest("Username and password are required");
     }
 
-    if (!users.Register(creds.Username, creds.Password))
+    if (!await users.RegisterAsync(creds.Username, creds.Password))
     {
         return Results.Conflict("User already exists");
     }

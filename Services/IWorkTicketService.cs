@@ -9,5 +9,5 @@ public interface IWorkTicketService
     Task<WorkTicket?> GetTicketByIdAsync(int id);
     Task UpdateTicketAsync(WorkTicket ticket, string updatedBy);
     Task DeleteTicketAsync(int id);
-    Task<DashboardMetricsDto> GetDashboardMetricsAsync();
+    Task<DashboardMetricsDto> GetDashboardMetricsAsync(string? username = null);
 }

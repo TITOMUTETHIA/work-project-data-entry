@@ -1,142 +1,159 @@
 ﻿@page "/"
-@using Microsoft.AspNetCore.Components.Authorization
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
 @inject IWorkTicketService TicketService
-@inject AuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Data Entry</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<h1>Chrome Partners Data Entry</h1>
+<div class="container-fluid">
+    <h1 class="mb-4">Dashboard</h1>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card mb-4">
-            <div class="card-header">
-                📋 Enter process track sheet
-            </div>
-            <div class="card-body">
-                <p class="card-text">
-                    Please fill in the required fields below correctly.
-                </p>
-
-                @if (showSuccess)
-                {
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <strong>Success!</strong> Ticket saved successfully.
-                        <button type="button" class="btn-close" @onclick="() => showSuccess = false" aria-label="Close"></button>
-                    </div>
-                }
-
-                <EditForm Model="@ticket" OnValidSubmit="HandleValidSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary class="alert alert-danger" />
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Work Ticket Number</label>
-                            <InputText @bind-Value="ticket.TicketNumber" class="form-control" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Cost Centre</label>
-                            <InputText @bind-Value="ticket.CostCentre" class="form-control" />
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Activity</label>
-                            <InputText @bind-Value="ticket.Activity" class="form-control" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Operator Name</label>
-                            <InputText @bind-Value="ticket.OperatorName" class="form-control" />
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Number of Operators</label>
-                            <InputNumber @bind-Value="ticket.NumOperators" class="form-control" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Material Used</label>
-                            <InputText @bind-Value="ticket.MaterialUsed" class="form-control" />
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Start Date & Time</label>
-                            <InputDate @bind-Value="ticket.StartDateTime" class="form-control" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">End Date & Time</label>
-                            <InputDate @bind-Value="ticket.EndDateTime" class="form-control" />
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Start Counter</label>
-                            <InputNumber @bind-Value="ticket.StartCounter" class="form-control" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">End Counter</label>
-                            <InputNumber @bind-Value="ticket.EndCounter" class="form-control" />
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Quantity In</label>
-                            <InputNumber @bind-Value="ticket.QuantityIn" class="form-control" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Quantity Out</label>
-                            <InputNumber @bind-Value="ticket.QuantityOut" class="form-control" />
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-end mt-4">
-                        <button type="submit" class="btn btn-primary me-2">💾 Save</button>
-                        <button type="button" class="btn btn-secondary" @onclick="ResetForm">🧹 Clear</button>
-                    </div>
-                </EditForm>
+    @if (metrics == null)
+    {
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card bg-primary text-white mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Tickets</h5>
+                        <p class="card-text display-4">@metrics.TotalTickets</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card bg-success text-white mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Last 7 Days</h5>
+                        <p class="card-text display-4">@metrics.TicketsCreatedLast7Days</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Tickets by Cost Centre
+                    </div>
+                    <div class="card-body">
+                        @if (metrics.TicketsByCostCentre.Any())
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var item in metrics.TicketsByCostCentre)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        @item.Label
+                                        <span class="badge bg-primary rounded-pill">@item.Value</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No data available.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Tickets by Operator
+                    </div>
+                    <div class="card-body">
+                        @if (metrics.TicketsByOperator.Any())
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var item in metrics.TicketsByOperator)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        @item.Label
+                                        <span class="badge bg-primary rounded-pill">@item.Value</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No data available.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                 <div class="card">
+                    <div class="card-header">
+                        Recent Tickets
+                    </div>
+                    <div class="card-body">
+                        @if (recentTickets != null && recentTickets.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Ticket #</th>
+                                            <th>Activity</th>
+                                            <th>Operator</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var ticket in recentTickets)
+                                        {
+                                            <tr>
+                                                <td>@ticket.TicketNumber</td>
+                                                <td>@ticket.Activity</td>
+                                                <td>@ticket.OperatorName</td>
+                                                <td>@FormatDate(ticket.DT)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p>No recent tickets found.</p>
+                        }
+                    </div>
+                 </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
-    private WorkTicket ticket = new();
-    private bool showSuccess = false;
+    private DashboardMetricsDto? metrics;
+    private List<WorkTicket>? recentTickets;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        ResetForm();
+        metrics = await TicketService.GetDashboardMetricsAsync();
+        
+        // Fetch recent tickets (Top 5 sorted by DT descending)
+        var pagedResult = await TicketService.GetWorkTicketsAsync(1, 5, null, "DT", false);
+        recentTickets = pagedResult.Items;
     }
 
-    private async Task HandleValidSubmit()
+    private string? FormatDate(string? isoDate)
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        ticket.CreatedBy = user.Identity?.Name ?? "Anonymous";
-        
-        await TicketService.CreateWorkTicketAsync(ticket);
-        
-        showSuccess = true;
-        
-        // Reset form for the next entry
-        ResetForm();
-        
-        // Auto-hide success message after a few seconds
-        _ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => { showSuccess = false; StateHasChanged(); }));
-    }
-
-    private void ResetForm()
-    {
-        ticket = new WorkTicket { StartDateTime = DateTime.Now, EndDateTime = DateTime.Now };
+        if (string.IsNullOrEmpty(isoDate)) return null;
+        if (DateTime.TryParse(isoDate, null, System.Globalization.DateTimeStyles.RoundtripKind, out var date))
+        {
+            return date.ToString("MM/dd/yyyy HH:mm");
+        }
+        return isoDate;
     }
 }

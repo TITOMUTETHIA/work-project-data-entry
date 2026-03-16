@@ -1,0 +1,80 @@
+@page "/audit-logs"
+@using Microsoft.AspNetCore.Authorization
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject IAuditLogService AuditLogService
+
+<PageTitle>Audit Logs</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="mb-4">System Audit Logs</h1>
+
+    @if (pagedResult == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!pagedResult.Items.Any())
+    {
+        <div class="alert alert-info">No audit log entries found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-striped table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp (UTC)</th>
+                        <th>Performed By</th>
+                        <th>Action</th>
+                        <th>Target User</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in pagedResult.Items)
+                    {
+                        <tr>
+                            <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@log.PerformedBy</td>
+                            <td><span class="badge bg-secondary">@log.Action</span></td>
+                            <td>@log.TargetUser</td>
+                            <td>@log.Details</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => LoadLogs(currentPage - 1)">Previous</button>
+                </li>
+                <li class="page-item disabled"><span class="page-link">Page @currentPage of @totalPages</span></li>
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="() => LoadLogs(currentPage + 1)">Next</button>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>
+
+@code {
+    private PagedResult<AuditLog>? pagedResult;
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages => pagedResult == null ? 1 : (int)Math.Ceiling((double)pagedResult.TotalCount / pageSize);
+
+    protected override async Task OnInitializedAsync() => await LoadLogs(1);
+
+    private async Task LoadLogs(int page)
+    {
+        currentPage = page;
+        pagedResult = await AuditLogService.GetLogsAsync(currentPage, pageSize);
+    }
+}

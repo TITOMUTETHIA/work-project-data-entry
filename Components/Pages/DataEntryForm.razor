@@ -1,8 +1,16 @@
 @page "/tickets"
 @using Microsoft.AspNetCore.Authorization
+@using System.Text.Json;
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@using WorkTicketApp.Components.Shared
+@using WorkTicketApp.Components
+@using Microsoft.AspNetCore.Components.Forms
 @inject IWorkTicketService TicketService
-@inject IJSRuntime JSRuntime
+@inject ModalService Modal
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
+@page "/work-tickets"
 
 <h3 class="text-primary mb-4">📑 Saved Work Tickets</h3>
 
@@ -10,18 +18,8 @@
     <div class="col-md-6">
         <div class="input-group">
             <input type="text" class="form-control" placeholder="Search by Ticket #, Operator, or Activity..." 
-                   @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchTickets" />
+                   value="@searchTerm" @oninput="OnSearchInput" />
             <button class="btn btn-outline-primary" @onclick="SearchTickets">Search</button>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="input-group">
-            <span class="input-group-text">From</span>
-            
-            <input type="date" class="form-control" @bind="filterStartDate" />
-            <span class="input-group-text">To</span>
-            <input type="date" class="form-control" @bind="filterEndDate" />
-            <button class="btn btn-outline-secondary" @onclick="SearchTickets">Filter</button>
         </div>
     </div>
 </div>
@@ -34,56 +32,20 @@ else if (editingTicketNumber != null)
 {
     <div class="card p-4 mb-4">
         <h4>Edit Work Ticket: @editingTicketNumber</h4>
-        <form>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Cost Centre</label>
-                    <input type="text" class="form-control" @bind="editingTicket!.CostCentre" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Activity</label>
-                    <input type="text" class="form-control" @bind="editingTicket.Activity" />
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Operator Name</label>
-                    <input type="text" class="form-control" @bind="editingTicket.OperatorName" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Number of Operators</label>
-                    <input type="number" class="form-control" @bind="editingTicket.NumOperators" />
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Start Date/Time</label>
-                    <input type="datetime-local" class="form-control" @bind="editingTicket.StartDateTime" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">End Date/Time</label>
-                    <input type="datetime-local" class="form-control" @bind="editingTicket.EndDateTime" />
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <label class="form-label">Quantity In</label>
-                    <input type="number" class="form-control" @bind="editingTicket.QuantityIn" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Quantity Out</label>
-                    <input type="number" class="form-control" @bind="editingTicket.QuantityOut" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Material Used</label>
-                    <input type="text" class="form-control" @bind="editingTicket.MaterialUsed" />
-                </div>
-            </div>
+        <EditForm Model="@editingTicket" OnValidSubmit="SaveChanges">
+            <button type="button" class="btn btn-warning" @onclick="Undo">Undo</button>
+            <button type="button" class="btn btn-info" @onclick="Redo">Redo</button>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            
+            <WorkTicketForm Model="editingTicket" />
+
             <div class="mt-3">
-                <button type="button" class="btn btn-success" @onclick="SaveChanges">Save Changes</button>
+                <button type="submit" class="btn btn-success">Save Changes</button>
                 <button type="button" class="btn btn-secondary ms-2" @onclick="CancelEdit">Cancel</button>
             </div>
-        </form>
+        </EditForm>
     </div>
 }
 else
@@ -96,10 +58,11 @@ else
                 <th style="cursor: pointer" @onclick='() => SortBy("Activity")'>Activity @GetSortIcon("Activity")</th>
                 <th style="cursor: pointer" @onclick='() => SortBy("OperatorName")'>Operator @GetSortIcon("OperatorName")</th>
                 <th>Num Operators</th>
-                <th>Start</th>
-                <th>End</th>
                 <th>Qty In</th>
                 <th>Qty Out</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("DT")'>Created Date @GetSortIcon("DT")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("StartDateTime")'>Start Date @GetSortIcon("StartDateTime")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("EndDateTime")'>End Date @GetSortIcon("EndDateTime")</th>
                 <th>Material Used</th>
                 <th>Actions</th>
             </tr>
@@ -113,10 +76,11 @@ else
                     <td>@t.Activity</td>
                     <td>@t.OperatorName</td>
                     <td>@t.NumOperators</td>
-                    <td>@t.StartDateTime.ToString("g")</td>
-                    <td>@t.EndDateTime.ToString("g")</td>
                     <td>@t.QuantityIn</td>
                     <td>@t.QuantityOut</td>
+                    <td>@FormatDate(t.DT)</td>
+                    <td>@FormatDate(t.StartDateTime)</td>
+                    <td>@FormatDate(t.EndDateTime)</td>
                     <td>@t.MaterialUsed</td>
                     <td>
                         @if (t.TicketNumber is not null)
@@ -151,6 +115,8 @@ else
 }
 
 @code {
+    @implements IDisposable
+
     private List<WorkTicket> tickets = new();
     private string? editingTicketNumber = null;
     private WorkTicket? editingTicket = null;
@@ -159,10 +125,11 @@ else
     private int pageSize = 10;
     private int totalCount = 0;
     private int totalPages => totalCount == 0 ? 1 : (int)Math.Ceiling((double)totalCount / pageSize);
-    private string sortBy = "CreatedAt";
+    private string sortBy = "DT";
     private bool sortAscending = false;
-    private DateTime? filterStartDate;
-    private DateTime? filterEndDate;
+    private CancellationTokenSource _searchCts = new();
+    private Stack<string> undoStack = new Stack<string>();
+    private Stack<string> redoStack = new Stack<string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,9 +138,29 @@ else
 
     private async Task LoadTickets()
     {
-        var result = await TicketService.GetWorkTicketsAsync(currentPage, pageSize, searchTerm, sortBy, sortAscending, filterStartDate, filterEndDate);
+        var result = await TicketService.GetWorkTicketsAsync(currentPage, pageSize, searchTerm, sortBy, sortAscending);
         tickets = result.Items;
         totalCount = result.TotalCount;
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+
+        // Cancel any previous search task to debounce
+        _searchCts.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(500, token); // Wait for 500ms of inactivity
+            await SearchTickets(); // Perform the search
+        }
+        catch (OperationCanceledException)
+        {
+            // This is expected if the user types again quickly. Ignore it.
+        }
     }
 
     private async Task SearchTickets()
@@ -217,6 +204,7 @@ else
         if (ticket != null)
         {
             editingTicketNumber = ticketNumber;
+            
             // Create a copy for editing
             editingTicket = new WorkTicket
             {
@@ -226,27 +214,52 @@ else
                 Activity = ticket.Activity,
                 OperatorName = ticket.OperatorName,
                 NumOperators = ticket.NumOperators,
-                StartDateTime = ticket.StartDateTime,
                 StartCounter = ticket.StartCounter,
-                EndDateTime = ticket.EndDateTime,
                 EndCounter = ticket.EndCounter,
                 QuantityIn = ticket.QuantityIn,
                 QuantityOut = ticket.QuantityOut,
-                MaterialUsed = ticket.MaterialUsed
+                MaterialUsed = ticket.MaterialUsed,
+                DT = ticket.DT,
+                StartDateTime = ticket.StartDateTime,
+                EndDateTime = ticket.EndDateTime,
+                CreatedBy = ticket.CreatedBy,
+                CreatedAt = ticket.CreatedAt,
+                UpdatedBy = ticket.UpdatedBy,
+                UpdatedAt = ticket.UpdatedAt
             };
+
+           
+            PushToUndoStack();
         }
     }
 
     private async Task SaveChanges()
     {
-        if (editingTicket != null && editingTicketNumber != null)
+        if (editingTicket != null)
         {
-            await TicketService.UpdateTicketAsync(editingTicket);
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var updatedByUser = user.Identity?.Name ?? "Unknown";
+            await TicketService.UpdateTicketAsync(editingTicket, updatedByUser);
             
             // Refresh list
             await LoadTickets();
+            ClearRedoStack();
         }
         CancelEdit();
+    }
+
+    private string? FormatDate(string? isoDate)
+    {
+        if (string.IsNullOrEmpty(isoDate))
+        {
+            return null;
+        }
+        if (DateTime.TryParse(isoDate, null, System.Globalization.DateTimeStyles.RoundtripKind, out var date))
+        {
+            return date.ToString("MM/dd/yyyy HH:mm");
+        }
+        return isoDate; // Fallback to original string if parsing fails
     }
 
     private void CancelEdit()
@@ -257,15 +270,66 @@ else
 
     private async Task DeleteTicket(int id)
     {
-        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this ticket?"))
+        var confirmed = await Modal.Show("Confirm Delete", "Are you sure you want to delete this ticket? This action cannot be undone.");
+        if (confirmed)
         {
             await TicketService.DeleteTicketAsync(id);
-            await LoadTickets();
-            if (tickets.Count == 0 && currentPage > 1)
+            // If the last item on a page is deleted, move to the previous page.
+            if (tickets.Count == 1 && currentPage > 1)
             {
                 currentPage--;
-                await LoadTickets();
+            }
+            await LoadTickets(); // Reload data for the correct page.
+        }
+    }
+
+    public void Dispose()
+    {
+        _searchCts.Cancel();
+        _searchCts.Dispose();
+    }
+
+    private void PushToUndoStack()
+    {
+        if (editingTicket != null)
+        {
+            string serializedTicket = JsonSerializer.Serialize(editingTicket);
+            undoStack.Push(serializedTicket);
+            redoStack.Clear();
+        }
+    }
+
+    private async Task Undo()
+    {
+        if (undoStack.Count > 0)
+        {
+            string serializedTicket = undoStack.Pop();
+            if (editingTicket != null)
+            {
+                string currentTicket = JsonSerializer.Serialize(editingTicket);
+                redoStack.Push(currentTicket);
+                editingTicket = JsonSerializer.Deserialize<WorkTicket>(serializedTicket);
             }
         }
     }
+
+    private async Task Redo()
+    {
+        if (redoStack.Count > 0)
+        {
+            string serializedTicket = redoStack.Pop();
+            if (editingTicket != null)
+            {
+                string currentTicket = JsonSerializer.Serialize(editingTicket);
+                undoStack.Push(currentTicket);
+                editingTicket = JsonSerializer.Deserialize<WorkTicket>(serializedTicket);
+            }
+        }
+    }
+
+    private void ClearRedoStack()
+    {
+        redoStack.Clear();
+    }
+
 }

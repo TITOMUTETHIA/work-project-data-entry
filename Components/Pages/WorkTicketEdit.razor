@@ -3,6 +3,7 @@
 @using System.Security.Claims
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
+@using WorkTicketApp.Components.Shared
 @inject IWorkTicketService WorkTicketService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -35,82 +36,7 @@ else
                 <DataAnnotationsValidator />
                 <ValidationSummary class="text-danger" />
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="ticketNumber" class="form-label">Ticket Number</label>
-                        <InputText id="ticketNumber" class="form-control" @bind-Value="workTicket.TicketNumber" />
-                        <ValidationMessage For="@(() => workTicket.TicketNumber)" />
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="costCentre" class="form-label">Cost Centre</label>
-                        <InputText id="costCentre" class="form-control" @bind-Value="workTicket.CostCentre" />
-                        <ValidationMessage For="@(() => workTicket.CostCentre)" />
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="activity" class="form-label">Activity</label>
-                    <InputText id="activity" class="form-control" @bind-Value="workTicket.Activity" />
-                    <ValidationMessage For="@(() => workTicket.Activity)" />
-                </div>
-
-                <div class="row">
-                    <div class="col-md-8 mb-3">
-                        <label for="operatorName" class="form-label">Operator Name</label>
-                        <InputText id="operatorName" class="form-control" @bind-Value="workTicket.OperatorName" />
-                        <ValidationMessage For="@(() => workTicket.OperatorName)" />
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="numOperators" class="form-label"># of Operators</label>
-                        <InputNumber id="numOperators" class="form-control" @bind-Value="workTicket.NumOperators" />
-                        <ValidationMessage For="@(() => workTicket.NumOperators)" />
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="startDateTime" class="form-label">Start Date & Time</label>
-                        <InputText id="startDateTime" class="form-control" @bind-Value="workTicket.StartDateTime" placeholder="YYYY-MM-DD HH:mm" />
-                        <ValidationMessage For="@(() => workTicket.StartDateTime)" />
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="startCounter" class="form-label">Start Counter</label>
-                        <InputNumber id="startCounter" class="form-control" @bind-Value="workTicket.StartCounter" />
-                        <ValidationMessage For="@(() => workTicket.StartCounter)" />
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="endDateTime" class="form-label">End Date & Time</label>
-                        <InputText id="endDateTime" class="form-control" @bind-Value="workTicket.EndDateTime" placeholder="YYYY-MM-DD HH:mm" />
-                        <ValidationMessage For="@(() => workTicket.EndDateTime)" />
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="endCounter" class="form-label">End Counter</label>
-                        <InputNumber id="endCounter" class="form-control" @bind-Value="workTicket.EndCounter" />
-                        <ValidationMessage For="@(() => workTicket.EndCounter)" />
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="quantityIn" class="form-label">Quantity In</label>
-                        <InputNumber id="quantityIn" class="form-control" @bind-Value="workTicket.QuantityIn" />
-                        <ValidationMessage For="@(() => workTicket.QuantityIn)" />
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="quantityOut" class="form-label">Quantity Out</label>
-                        <InputNumber id="quantityOut" class="form-control" @bind-Value="workTicket.QuantityOut" />
-                        <ValidationMessage For="@(() => workTicket.QuantityOut)" />
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="materialUsed" class="form-label">Material Used</label>
-                    <InputTextArea id="materialUsed" class="form-control" @bind-Value="workTicket.MaterialUsed" />
-                    <ValidationMessage For="@(() => workTicket.MaterialUsed)" />
-                </div>
+                <WorkTicketForm Model="@workTicket" />
 
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary">Save Changes</button>

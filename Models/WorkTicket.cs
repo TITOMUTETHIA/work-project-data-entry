@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using WorkTicketApp.Models.Validation;
+using System.Collections.Generic;
+using WorkTicketApp.Validation;
 
 namespace WorkTicketApp.Models;
 
-public class WorkTicket
+public class WorkTicket : IValidatableObject
 {
     public int Id { get; set; }
 
@@ -16,18 +17,28 @@ public class WorkTicket
     public string? Activity { get; set; }
     public string? OperatorName { get; set; }
     public int NumOperators { get; set; }
-    [IsValidDate(ErrorMessage = "Start Date Time must be a valid date.")]
-    public string? StartDateTime { get; set; }
     public int StartCounter { get; set; }
-    [IsValidDate(ErrorMessage = "End Date Time must be a valid date.")]
-    [DateGreaterThan(nameof(StartDateTime), ErrorMessage = "End Date Time must be on or after Start Date Time.")]
-    public string? EndDateTime { get; set; }
+
+    [GreaterThan(nameof(StartCounter), ErrorMessage = "End Counter must be greater than Start Counter.")]
     public int EndCounter { get; set; }
+    public string? StartDateTime { get; set; }
+    public string? EndDateTime { get; set; }
     public int QuantityIn { get; set; }
     public int QuantityOut { get; set; }
     public string? MaterialUsed { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public string? DT { get; set; }
     public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+      if (!string.IsNullOrEmpty(StartDateTime) && !string.IsNullOrEmpty(EndDateTime))
+        {
+            if (DateTime.TryParse(StartDateTime, out DateTime start) && DateTime.TryParse(EndDateTime, out DateTime end))
+            {
+                if (start > end) yield return new ValidationResult("Start Date Time must be earlier than End Date Time.", new[] { nameof(StartDateTime), nameof(EndDateTime) });
+            }
+        }
+    }
 }
