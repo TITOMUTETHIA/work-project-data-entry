@@ -7,16 +7,38 @@ namespace WorkTicketApp.Services;
 public class WorkTicketService : IWorkTicketService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _factory;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IAuditLogService _auditLogService;
 
-    public WorkTicketService(IDbContextFactory<ApplicationDbContext> factory)
+    public WorkTicketService(
+        IDbContextFactory<ApplicationDbContext> factory,
+        IHttpContextAccessor httpContextAccessor,
+        IAuditLogService auditLogService)
     {
         _factory = factory;
+        _httpContextAccessor = httpContextAccessor;
+        _auditLogService = auditLogService;
     }
 
     public async Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null)
     {
         using var context = await _factory.CreateDbContextAsync();
         var query = context.WorkTickets.AsQueryable();
+
+        var user = _httpContextAccessor.HttpContext?.User;
+        var username = user?.Identity?.Name;
+
+        if (user == null || !user.IsInRole("Admin"))
+        {
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                query = query.Where(t => t.CreatedBy == username);
+            }
+            else
+            {
+                query = query.Where(t => false);
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -49,6 +71,10 @@ public class WorkTicketService : IWorkTicketService
             ("operatorname", false) => query.OrderByDescending(t => t.OperatorName),
             ("dt", true) => query.OrderBy(t => t.DT),
             ("dt", false) => query.OrderByDescending(t => t.DT),
+            ("startdatetime", true) => query.OrderBy(t => t.StartDateTime),
+            ("startdatetime", false) => query.OrderByDescending(t => t.StartDateTime),
+            ("enddatetime", true) => query.OrderBy(t => t.EndDateTime),
+            ("enddatetime", false) => query.OrderByDescending(t => t.EndDateTime),
             _ => query.OrderByDescending(t => t.DT) // Default sort
         };
 
@@ -81,19 +107,45 @@ public class WorkTicketService : IWorkTicketService
         var existing = await context.WorkTickets.FirstOrDefaultAsync(t => t.Id == ticket.Id);
         if (existing != null)
         {
+            string details = "";
+
+            // Detailed logging of changes
+            if (existing.TicketNumber != ticket.TicketNumber)
+                details += $"TicketNumber changed from '{existing.TicketNumber}' to '{ticket.TicketNumber}'. ";
+            if (existing.CostCentre != ticket.CostCentre)
+                details += $"CostCentre changed from '{existing.CostCentre}' to '{ticket.CostCentre}'. ";
+            if (existing.Activity != ticket.Activity)
+                details += $"Activity changed from '{existing.Activity}' to '{ticket.Activity}'. ";
+            if (existing.OperatorName != ticket.OperatorName)
+                details += $"OperatorName changed from '{existing.OperatorName}' to '{ticket.OperatorName}'. ";
+            if (existing.NumOperators != ticket.NumOperators)
+                details += $"NumOperators changed from '{existing.NumOperators}' to '{ticket.NumOperators}'. ";
+            if (existing.StartCounter != ticket.StartCounter)
+                details += $"StartCounter changed from '{existing.StartCounter}' to '{ticket.StartCounter}'. ";
+            if (existing.EndCounter != ticket.EndCounter)
+                details += $"EndCounter changed from '{existing.EndCounter}' to '{ticket.EndCounter}'. ";
+            if (existing.StartDateTime != ticket.StartDateTime)
+                details += $"StartDateTime changed from '{existing.StartDateTime}' to '{ticket.StartDateTime}'. ";
+            if (existing.EndDateTime != ticket.EndDateTime)
+                details += $"EndDateTime changed from '{existing.EndDateTime}' to '{ticket.EndDateTime}'. ";
+            if (existing.QuantityIn != ticket.QuantityIn)
+                details += $"QuantityIn changed from '{existing.QuantityIn}' to '{ticket.QuantityIn}'. ";
+            if (existing.QuantityOut != ticket.QuantityOut)
+                details += $"QuantityOut changed from '{existing.QuantityOut}' to '{ticket.QuantityOut}'. ";
+            if (existing.MaterialUsed != ticket.MaterialUsed)
+                details += $"MaterialUsed changed from '{existing.MaterialUsed}' to '{ticket.MaterialUsed}'. ";
+
             // Use SetValues for a more maintainable approach to copy properties.
             context.Entry(existing).CurrentValues.SetValues(ticket);
 
             // Explicitly set audit fields that should be controlled by the server.
             existing.UpdatedBy = updatedBy;
             existing.UpdatedAt = DateTime.UtcNow;
-
-            // Ensure read-only fields are not modified by the incoming request.
-            // This prevents over-posting vulnerabilities.
-            context.Entry(existing).Property(p => p.DT).IsModified = false;
-            context.Entry(existing).Property(p => p.CreatedBy).IsModified = false;
-            context.Entry(existing).Property(p => p.CreatedAt).IsModified = false;
-
+           await _auditLogService.LogAsync(updatedBy, "Work Ticket Updated", ticket.TicketNumber, details);
+           // Ensure read-only fields are not modified by the incoming request.
+           context.Entry(existing).Property(p => p.DT).IsModified = false;
+           context.Entry(existing).Property(p => p.CreatedBy).IsModified = false;
+           context.Entry(existing).Property(p => p.CreatedAt).IsModified = false;
             await context.SaveChangesAsync();
         }
     }

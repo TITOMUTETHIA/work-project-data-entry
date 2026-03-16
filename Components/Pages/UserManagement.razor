@@ -6,6 +6,7 @@
 @attribute [Authorize(Roles = "Admin")]
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@using WorkTicketApp.Components
 
 <PageTitle>User Management</PageTitle>
 
@@ -88,7 +89,7 @@
                                     <button class="btn btn-outline-info btn-sm me-2" @onclick="() => OpenResetModal(user)" title="Reset Password">
                                         Reset Pass
                                     </button>
-                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteUser(user)" title="Delete User">
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => OpenDeleteConfirmation(user)" title="Delete User">
                                         Delete
                                     </button>
                                 }
@@ -122,6 +123,27 @@
         }
     }
 </div>
+
+@if (showDeleteModal && selectedUserForDelete != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete @selectedUserForDelete.Username</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDeleteConfirmation"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete user <strong>@selectedUserForDelete.Username</strong>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDeleteConfirmation">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteUser">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (showResetModal)
 {
@@ -157,6 +179,8 @@
     private int totalPages => (int)Math.Ceiling((double)totalCount / pageSize);
     private bool isLoading = true;
     private string? currentUsername;
+    private bool showDeleteModal = false;
+    private UserDto? selectedUserForDelete;
     private bool showResetModal = false;
     private UserDto? selectedUserForReset;
     private string newPassword = "";
@@ -195,12 +219,33 @@
         }
     }
 
-    private async Task DeleteUser(UserDto user)
+     private void OpenDeleteConfirmation(UserDto user)
     {
-        var success = await UserService.DeleteUserAsync(user.Username);
-        if (success)
+        selectedUserForDelete = user;
+        showDeleteModal = true;
+    }
+
+    private void CloseDeleteConfirmation()
+    {
+        showDeleteModal = false;
+        selectedUserForDelete = null;
+    }
+
+    private async Task ConfirmDeleteUser()
+    {
+        if (selectedUserForDelete != null)
         {
-            await LoadUsers(currentPage);
+            var success = await UserService.DeleteUserAsync(selectedUserForDelete.Username);
+            if (success)
+            {
+                await LoadUsers(currentPage);
+            }
+            CloseDeleteConfirmation();
+        }
+        else
+        {
+            // Log an error or display a message indicating that the user to delete is not selected
+            Console.WriteLine("Error: No user selected for deletion.");
         }
     }
 

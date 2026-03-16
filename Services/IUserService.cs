@@ -19,5 +19,6 @@ namespace WorkTicketApp.Services
         Task<List<UserDto>> GetAllUsersAsync(string? searchTerm = null, string? sortBy = null, bool sortAscending = true);
         Task AddUserAsync(User user);
         Task<User?> ValidateUserAsync(string username, string password);
+        Task<bool> UpdateProfileAsync(string username, string newUsername);
     }
 }

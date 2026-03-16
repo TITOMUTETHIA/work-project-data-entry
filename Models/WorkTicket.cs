@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
 using WorkTicketApp.Validation;
 
 namespace WorkTicketApp.Models;
 
-public class WorkTicket
+public class WorkTicket : IValidatableObject
 {
     public int Id { get; set; }
 
@@ -30,4 +31,14 @@ public class WorkTicket
     public DateTime CreatedAt { get; set; }
     public string? UpdatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+      if (!string.IsNullOrEmpty(StartDateTime) && !string.IsNullOrEmpty(EndDateTime))
+        {
+            if (DateTime.TryParse(StartDateTime, out DateTime start) && DateTime.TryParse(EndDateTime, out DateTime end))
+            {
+                if (start > end) yield return new ValidationResult("Start Date Time must be earlier than End Date Time.", new[] { nameof(StartDateTime), nameof(EndDateTime) });
+            }
+        }
+    }
 }

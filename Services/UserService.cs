@@ -64,6 +64,7 @@ public class UserService : IUserService
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        _logger.LogInformation("User '{Username}' logged in successfully.", username);
         return new ClaimsPrincipal(identity);
     }
 
@@ -119,6 +120,9 @@ public class UserService : IUserService
         var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
         await _auditLogService.LogAsync(performedBy, "User Deleted", username, $"User '{username}' was deleted.");
 
+
+        _logger.LogInformation("User '{Username}' deleted successfully.", username);
+
         return true;
     }
 
@@ -135,6 +139,7 @@ public class UserService : IUserService
         var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
         await _auditLogService.LogAsync(performedBy, "User Role Changed", username, $"Changed role for user '{username}' from '{oldRole}' to '{role}'.");
 
+        _logger.LogInformation("User '{Username}' role changed successfully.", username);
         return true;
     }
 
@@ -171,5 +176,21 @@ public class UserService : IUserService
 
         await using var context = await _factory.CreateDbContextAsync();
         return await context.Users.FirstOrDefaultAsync(u => u.Username == username);
+    }
+
+    public async Task<bool> UpdateProfileAsync(string username, string newUsername)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (user == null) return false;
+
+        user.Username = newUsername;
+        await context.SaveChangesAsync();
+
+        var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
+        await _auditLogService.LogAsync(performedBy, "Profile Updated", username, $"Username changed for user '{username}' to '{newUsername}'.");
+
+        _logger.LogInformation("User '{Username}' username changed successfully.", username);
+        return true;
     }
 }

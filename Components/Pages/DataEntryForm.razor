@@ -1,5 +1,6 @@
 @page "/tickets"
 @using Microsoft.AspNetCore.Authorization
+@using System.Text.Json;
 @using WorkTicketApp.Models
 @using WorkTicketApp.Services
 @using WorkTicketApp.Components.Shared
@@ -9,6 +10,7 @@
 @inject ModalService Modal
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
+@page "/work-tickets"
 
 <h3 class="text-primary mb-4">📑 Saved Work Tickets</h3>
 
@@ -31,9 +33,12 @@ else if (editingTicketNumber != null)
     <div class="card p-4 mb-4">
         <h4>Edit Work Ticket: @editingTicketNumber</h4>
         <EditForm Model="@editingTicket" OnValidSubmit="SaveChanges">
+            <button type="button" class="btn btn-warning" @onclick="Undo">Undo</button>
+            <button type="button" class="btn btn-info" @onclick="Redo">Redo</button>
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" />
 
+            
             <WorkTicketForm Model="editingTicket" />
 
             <div class="mt-3">
@@ -55,7 +60,9 @@ else
                 <th>Num Operators</th>
                 <th>Qty In</th>
                 <th>Qty Out</th>
-                <th style="cursor: pointer" @onclick='() => SortBy("DT")'>Date @GetSortIcon("DT")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("DT")'>Created Date @GetSortIcon("DT")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("StartDateTime")'>Start Date @GetSortIcon("StartDateTime")</th>
+                <th style="cursor: pointer" @onclick='() => SortBy("EndDateTime")'>End Date @GetSortIcon("EndDateTime")</th>
                 <th>Material Used</th>
                 <th>Actions</th>
             </tr>
@@ -72,6 +79,8 @@ else
                     <td>@t.QuantityIn</td>
                     <td>@t.QuantityOut</td>
                     <td>@FormatDate(t.DT)</td>
+                    <td>@FormatDate(t.StartDateTime)</td>
+                    <td>@FormatDate(t.EndDateTime)</td>
                     <td>@t.MaterialUsed</td>
                     <td>
                         @if (t.TicketNumber is not null)
@@ -119,6 +128,8 @@ else
     private string sortBy = "DT";
     private bool sortAscending = false;
     private CancellationTokenSource _searchCts = new();
+    private Stack<string> undoStack = new Stack<string>();
+    private Stack<string> redoStack = new Stack<string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,6 +204,7 @@ else
         if (ticket != null)
         {
             editingTicketNumber = ticketNumber;
+            
             // Create a copy for editing
             editingTicket = new WorkTicket
             {
@@ -215,6 +227,9 @@ else
                 UpdatedBy = ticket.UpdatedBy,
                 UpdatedAt = ticket.UpdatedAt
             };
+
+           
+            PushToUndoStack();
         }
     }
 
@@ -229,6 +244,7 @@ else
             
             // Refresh list
             await LoadTickets();
+            ClearRedoStack();
         }
         CancelEdit();
     }
@@ -272,4 +288,48 @@ else
         _searchCts.Cancel();
         _searchCts.Dispose();
     }
+
+    private void PushToUndoStack()
+    {
+        if (editingTicket != null)
+        {
+            string serializedTicket = JsonSerializer.Serialize(editingTicket);
+            undoStack.Push(serializedTicket);
+            redoStack.Clear();
+        }
+    }
+
+    private async Task Undo()
+    {
+        if (undoStack.Count > 0)
+        {
+            string serializedTicket = undoStack.Pop();
+            if (editingTicket != null)
+            {
+                string currentTicket = JsonSerializer.Serialize(editingTicket);
+                redoStack.Push(currentTicket);
+                editingTicket = JsonSerializer.Deserialize<WorkTicket>(serializedTicket);
+            }
+        }
+    }
+
+    private async Task Redo()
+    {
+        if (redoStack.Count > 0)
+        {
+            string serializedTicket = redoStack.Pop();
+            if (editingTicket != null)
+            {
+                string currentTicket = JsonSerializer.Serialize(editingTicket);
+                undoStack.Push(currentTicket);
+                editingTicket = JsonSerializer.Deserialize<WorkTicket>(serializedTicket);
+            }
+        }
+    }
+
+    private void ClearRedoStack()
+    {
+        redoStack.Clear();
+    }
+
 }

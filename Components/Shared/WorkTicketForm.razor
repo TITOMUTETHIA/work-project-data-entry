@@ -1,5 +1,6 @@
 @using WorkTicketApp.Models
 @using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
 
 <div class="row">
     <div class="col-md-6 mb-3">
@@ -35,12 +36,12 @@
 
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label for="startDateTime" class="form-label">Start Date & Time</label>
+        <label for="StartDateTime" class="form-label">Start Date & Time</label>
         <InputText id="startDateTime" class="form-control" @bind-Value="Model.StartDateTime" placeholder="YYYY-MM-DD HH:mm" />
         <ValidationMessage For="@(() => Model.StartDateTime)" />
     </div>
     <div class="col-md-6 mb-3">
-        <label for="startCounter" class="form-label">Start Counter</label>
+        <label for="StartCounter" class="form-label">Start Counter</label>
         <InputNumber id="startCounter" class="form-control" @bind-Value="Model.StartCounter" />
         <ValidationMessage For="@(() => Model.StartCounter)" />
     </div>
@@ -48,12 +49,12 @@
 
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label for="endDateTime" class="form-label">End Date & Time</label>
+        <label for="EndDateTime" class="form-label">End Date & Time</label>
         <InputText id="endDateTime" class="form-control" @bind-Value="Model.EndDateTime" placeholder="YYYY-MM-DD HH:mm" />
         <ValidationMessage For="@(() => Model.EndDateTime)" />
     </div>
     <div class="col-md-6 mb-3">
-        <label for="endCounter" class="form-label">End Counter</label>
+        <label for="EndCounter" class="form-label">End Counter</label>
         <InputNumber id="endCounter" class="form-control" @bind-Value="Model.EndCounter" />
         <ValidationMessage For="@(() => Model.EndCounter)" />
     </div>
@@ -81,4 +82,15 @@
 @code {
     [Parameter, EditorRequired]
     public WorkTicket Model { get; set; } = default!;
+}
+
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("enableInputMasks");
+        }
+    }
 }

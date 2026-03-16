@@ -3,6 +3,7 @@ using WorkTicketApp.Services;
 using WorkTicketApp.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using WorkTicketApp.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +19,22 @@ ConfigureServices(builder.Services);
 
 // Add DbContextFactory
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+var isDevelopment = builder.Environment.IsDevelopment();
+
+// If dev config is still pointing at LocalDB and LocalDB isn't installed, fallback to SQLite.
+if (isDevelopment && connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase))
+{
+    connectionString = "Data Source=workticket-dev.db";
+}
+
+if (connectionString.Contains("Data Source", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+}
+else
+{
+    builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+}
 
 var app = builder.Build();
 
@@ -76,7 +92,10 @@ static void ConfigureServices(IServiceCollection services)
             options.ExpireTimeSpan = TimeSpan.FromDays(7);
         });
 
-    services.AddAuthorizationBuilder();
+    services.AddAuthorizationBuilder()
+        .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+        .AddPolicy("MinimumAge", policy => policy.Requirements.Add(new MinimumAgeRequirement(21)));
+    services.AddSingleton<IAuthorizationHandler, MinimumAgeHandler>();
 }
 
 static async Task SeedUserDataAsync(WebApplication app)
@@ -190,7 +209,7 @@ static void ConfigureMiddleware(WebApplication app)
     authGroup.MapPost("/logout", (Delegate)Logout)
         .WithName("Logout")
         .WithSummary("Logout user")
-        .RequireAuthorization();
+        .RequireAuthorization("AdminOnly");
 }
 
 static async Task<IResult> Login(HttpContext ctx, IUserService users, [FromForm] LoginDto creds)
