@@ -11,7 +11,7 @@
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-Found markup el                <i class="fas fa-home" aria-hidden="true"></i> Home
+                <i class="fas fa-home" aria-hidden="true"></i> Home
             </NavLink>
         </div>
         <div class="nav-item px-3">
@@ -36,11 +36,3 @@ Found markup el                <i class="fas fa-home" aria-hidden="true"></i> Ho
         </div>
     </nav>
 </div>
-
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
-}

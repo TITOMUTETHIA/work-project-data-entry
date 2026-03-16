@@ -43,11 +43,10 @@ var app = builder.Build();
 // Seed default admin user
 try
 {
-    // Reset the database to ensure seeding runs on a clean slate
+    // Ensure database exists without deleting existing data
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await context.Database.EnsureDeletedAsync();
         await context.Database.EnsureCreatedAsync();
     }
 
