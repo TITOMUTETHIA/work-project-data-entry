@@ -26,7 +26,7 @@ public class UserService : IUserService
     public async Task<bool> RegisterAsync(string username, string password, string role = "User")
     {
         await using var context = await _factory.CreateDbContextAsync();
-        if (await context.Users.AnyAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
+        if (await context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
         {
             _logger.LogWarning("Registration failed: Username '{Username}' already exists.", username);
             return false;
@@ -48,7 +48,7 @@ public class UserService : IUserService
     public async Task<ClaimsPrincipal?> ValidateCredentialsAsync(string username, string password)
     {
         await using var context = await _factory.CreateDbContextAsync();
-        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
         {
@@ -173,7 +173,7 @@ public class UserService : IUserService
 
         await using var context = await _factory.CreateDbContextAsync();
         // This second database call is redundant because ValidateCredentialsAsync already fetched the user.
-        return await context.Users.FirstOrDefaultAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+        return await context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
     }
 
     public async Task<bool> UpdateProfileAsync(string username, string newUsername)
