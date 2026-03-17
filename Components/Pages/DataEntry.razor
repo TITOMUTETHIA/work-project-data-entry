@@ -1,0 +1,103 @@
+@page "/data-entry"
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@inject IWorkTicketService WorkTicketService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>New Work Ticket Entry</h3>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <EditForm Model="@ticket" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+
+                <div class="mb-3">
+                    <label for="ticketNumber" class="form-label">Ticket Number</label>
+                    <InputText id="ticketNumber" class="form-control" @bind-Value="ticket.TicketNumber" placeholder="e.g. TKT-2023-001" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="costCentre" class="form-label">Cost Centre</label>
+                    <InputSelect id="costCentre" class="form-select" @bind-Value="ticket.CostCentre">
+                        <option value="">Select Cost Centre...</option>
+                        <option value="CC-MECH">Mechanical</option>
+                        <option value="CC-ELEC">Electrical</option>
+                        <option value="CC-CIVIL">Civil</option>
+                        <option value="CC-ADMIN">Admin</option>
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label for="activity" class="form-label">Activity</label>
+                    <InputText id="activity" class="form-control" @bind-Value="ticket.Activity" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="startCounter" class="form-label">Start Counter</label>
+                        <InputNumber id="startCounter" class="form-control" @bind-Value="ticket.StartCounter" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="endCounter" class="form-label">End Counter</label>
+                        <InputNumber id="endCounter" class="form-control" @bind-Value="ticket.EndCounter" />
+                    </div>
+                </div>
+                
+                 <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="quantityIn" class="form-label">Quantity In</label>
+                        <InputNumber id="quantityIn" class="form-control" @bind-Value="ticket.QuantityIn" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="quantityOut" class="form-label">Quantity Out</label>
+                        <InputNumber id="quantityOut" class="form-control" @bind-Value="ticket.QuantityOut" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="startDateTime" class="form-label">Start Time</label>
+                        <InputText type="datetime-local" id="startDateTime" class="form-control" @bind-Value="ticket.StartDateTime" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="endDateTime" class="form-label">End Time</label>
+                        <InputText type="datetime-local" id="endDateTime" class="form-control" @bind-Value="ticket.EndDateTime" />
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="materialUsed" class="form-label">Material Used</label>
+                    <InputTextArea id="materialUsed" class="form-control" @bind-Value="ticket.MaterialUsed" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit Entry</button>
+                <a href="tickets" class="btn btn-secondary ms-2">Cancel</a>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private WorkTicket ticket = new();
+
+    private async Task HandleValidSubmit()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            ticket.CreatedBy = user.Identity.Name;
+            ticket.OperatorName = user.Identity.Name; // Default operator to current user
+        }
+
+        await WorkTicketService.CreateWorkTicketAsync(ticket);
+        NavigationManager.NavigateTo("tickets");
+    }
+}

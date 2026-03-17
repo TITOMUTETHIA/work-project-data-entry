@@ -163,7 +163,7 @@ public class WorkTicketService : IWorkTicketService
 
     public async Task<DashboardMetricsDto> GetDashboardMetricsAsync(string? username = null)
     {
-        using var context = await _factory.CreateDbContextAsync();
+        await using var context = await _factory.CreateDbContextAsync();
         var query = context.WorkTickets.AsQueryable();
 
         if (!string.IsNullOrEmpty(username))
@@ -173,29 +173,38 @@ public class WorkTicketService : IWorkTicketService
 
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
 
-        var totalTickets = await query.CountAsync();
-        var activeTickets = await query.CountAsync(t => t.EndDateTime == null || t.EndDateTime == "");
-        
-        var sevenDaysAgoString = sevenDaysAgo.ToString("o");
-        var ticketsCreatedLast7Days = await query
-            .CountAsync(t => t.DT != null && t.DT.CompareTo(sevenDaysAgoString) >= 0);
+        // Combine simple counts into a single, more efficient database query.
+        var statsTask = query.GroupBy(_ => 1).Select(g => new
+        {
+            TotalTickets = g.Count(),
+            ActiveTickets = g.Count(t => t.EndDateTime == null || t.EndDateTime == ""),
+            // Query against the DateTime column for better performance and type safety.
+            TicketsCreatedLast7Days = g.Count(t => t.CreatedAt >= sevenDaysAgo)
+        }).FirstOrDefaultAsync();
 
-        var ticketsByCostCentre = await query
+        // Execute chart data queries in parallel to reduce total wait time.
+        var ticketsByCostCentreTask = query
             .Where(t => t.CostCentre != null)
             .GroupBy(t => t.CostCentre)
             .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
             .OrderByDescending(c => c.Value)
-            .Take(10) // Take top 10 for clarity
+            .Take(10)
             .ToListAsync();
 
-        var ticketsByOperator = await query
+        var ticketsByOperatorTask = query
             .Where(t => t.OperatorName != null)
             .GroupBy(t => t.OperatorName)
             .Select(g => new ChartDataPoint { Label = g.Key!, Value = g.Count() })
             .OrderByDescending(c => c.Value)
-            .Take(10) // Take top 10 for clarity
+            .Take(10)
             .ToListAsync();
 
-        return new DashboardMetricsDto { TotalTickets = totalTickets, ActiveTickets = activeTickets, TicketsCreatedLast7Days = ticketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
+        await Task.WhenAll(statsTask, ticketsByCostCentreTask, ticketsByOperatorTask);
+
+        var stats = await statsTask ?? new { TotalTickets = 0, ActiveTickets = 0, TicketsCreatedLast7Days = 0 };
+        var ticketsByCostCentre = await ticketsByCostCentreTask;
+        var ticketsByOperator = await ticketsByOperatorTask;
+
+        return new DashboardMetricsDto { TotalTickets = stats.TotalTickets, ActiveTickets = stats.ActiveTickets, TicketsCreatedLast7Days = stats.TicketsCreatedLast7Days, TicketsByCostCentre = ticketsByCostCentre, TicketsByOperator = ticketsByOperator };
     }
 }

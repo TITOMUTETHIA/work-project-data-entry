@@ -45,7 +45,7 @@ public class UserService : IUserService
         return true;
     }
 
-    public async Task<ClaimsPrincipal?> ValidateCredentialsAsync(string username, string password)
+    private async Task<User?> GetAndValidateUserAsync(string username, string password)
     {
         await using var context = await _factory.CreateDbContextAsync();
         var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
@@ -55,7 +55,14 @@ public class UserService : IUserService
             _logger.LogWarning("Login failed for user '{Username}'. Invalid credentials.", username);
             return null;
         }
+        return user;
+    }
 
+    public async Task<ClaimsPrincipal?> ValidateCredentialsAsync(string username, string password)
+    {
+        var user = await GetAndValidateUserAsync(username, password);
+        if (user == null) return null;
+        
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, user.Username),
@@ -163,17 +170,12 @@ public class UserService : IUserService
     public Task AddUserAsync(User user) => RegisterAsync(user.Username, user.Password, user.Role);
 
     /// <summary>
-    /// This method is inefficient as it performs two database lookups.
-    /// Consider refactoring validation logic to fetch the user only once if this method is required.
+    /// This method validates user credentials and returns the full User object.
+    /// It is now efficient and avoids redundant database lookups.
     /// </summary>
     public async Task<User?> ValidateUserAsync(string username, string password)
     {
-        var principal = await ValidateCredentialsAsync(username, password);
-        if (principal == null) return null;
-
-        await using var context = await _factory.CreateDbContextAsync();
-        // This second database call is redundant because ValidateCredentialsAsync already fetched the user.
-        return await context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+        return await GetAndValidateUserAsync(username, password);
     }
 
     public async Task<bool> UpdateProfileAsync(string username, string newUsername)
