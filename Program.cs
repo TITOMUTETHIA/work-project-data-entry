@@ -188,9 +188,9 @@ static void ConfigureMiddleware(WebApplication app)
 
     app.UseHttpsRedirection()
         .UseStaticFiles()
-        .UseAntiforgery()
         .UseAuthentication()
-        .UseAuthorization();
+        .UseAuthorization()
+        .UseAntiforgery();
 
     app.MapRazorComponents<App>()
         .AddInteractiveServerRenderMode();

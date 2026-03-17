@@ -4,6 +4,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
 @inject IWorkTicketService WorkTicketService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
