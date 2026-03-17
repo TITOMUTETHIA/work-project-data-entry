@@ -1,0 +1,82 @@
+@page "/tickets"
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IWorkTicketService WorkTicketService
+@inject NavigationManager NavigationManager
+@inject ModalService ModalService
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Work Tickets</h3>
+    <a href="/data-entry" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Create New
+    </a>
+</div>
+
+@if (pagedResult == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="table-responsive card">
+        <table class="table table-striped table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Ticket Number</th>
+                    <th>Cost Centre</th>
+                    <th>Activity</th>
+                    <th>Operator</th>
+                    <th>Date</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ticket in pagedResult.Items)
+                {
+                    <tr>
+                        <td>@ticket.TicketNumber</td>
+                        <td>@ticket.CostCentre</td>
+                        <td>@ticket.Activity</td>
+                        <td>@ticket.OperatorName</td>
+                        <td>@ticket.CreatedAt.ToShortDateString()</td>
+                        <td class="text-end">
+                            <a href="@($"tickets/edit/{ticket.Id}")" class="btn btn-sm btn-secondary me-1">
+                                <i class="fas fa-edit" aria-hidden="true"></i> Edit
+                            </a>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteTicket(ticket.Id)">
+                                <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private PagedResult<WorkTicket>? pagedResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTickets();
+    }
+
+    private async Task LoadTickets()
+    {
+        pagedResult = await WorkTicketService.GetWorkTicketsAsync(1, 50); // Load first 50 tickets
+    }
+
+    private async Task DeleteTicket(int ticketId)
+    {
+        var confirmed = await ModalService.Show("Confirm Delete", "Are you sure you want to delete this ticket?");
+        if (confirmed)
+        {
+            await WorkTicketService.DeleteTicketAsync(ticketId);
+            await LoadTickets(); // Refresh the list
+        }
+    }
+}
