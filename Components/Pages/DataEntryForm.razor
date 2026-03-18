@@ -10,9 +10,8 @@
 @inject ModalService Modal
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
-@page "/work-tickets"
 
-<h3 class="text-primary mb-4">📑 Saved Work Tickets</h3>
+<h3 class="text-primary mb-4">📑 Work Ticket Management</h3>
 
 <div class="row mb-4">
     <div class="col-md-6">
@@ -22,19 +21,23 @@
             <button class="btn btn-outline-primary" @onclick="SearchTickets">Search</button>
         </div>
     </div>
+    <div class="col-md-6 text-end">
+        <button type="button" class="btn btn-success" @onclick="CreateNewTicket"><i class="fas fa-plus"></i> Create New Ticket</button>
+    </div>
 </div>
 
-@if (tickets == null || tickets.Count == 0)
+@if (editingTicketNumber != null)
 {
-    <div class="alert alert-info">No work tickets have been saved yet.</div>
-}
-else if (editingTicketNumber != null)
-{
-    <div class="card p-4 mb-4">
-        <h4>Edit Work Ticket: @editingTicketNumber</h4>
+    <div class="card p-4 mb-4 shadow">
+        <h4>@(editingTicket?.Id == 0 ? "New Work Ticket" : $"Edit Work Ticket: {editingTicketNumber}")</h4>
         <EditForm Model="@editingTicket" OnValidSubmit="SaveChanges">
-            <button type="button" class="btn btn-warning" @onclick="Undo">Undo</button>
-            <button type="button" class="btn btn-info" @onclick="Redo">Redo</button>
+            @if(editingTicket?.Id != 0) 
+            {
+                <div class="mb-3">
+                    <button type="button" class="btn btn-sm btn-warning" @onclick="Undo">Undo</button>
+                    <button type="button" class="btn btn-sm btn-info" @onclick="Redo">Redo</button>
+                </div>
+            }
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" />
 
@@ -42,11 +45,15 @@ else if (editingTicketNumber != null)
             <WorkTicketForm Model="editingTicket" />
 
             <div class="mt-3">
-                <button type="submit" class="btn btn-success">Save Changes</button>
+                <button type="submit" class="btn btn-success">@(editingTicket?.Id == 0 ? "Create Ticket" : "Save Changes")</button>
                 <button type="button" class="btn btn-secondary ms-2" @onclick="CancelEdit">Cancel</button>
             </div>
         </EditForm>
     </div>
+}
+else if (tickets == null || tickets.Count == 0)
+{
+    <div class="alert alert-info">No work tickets have been saved yet.</div>
 }
 else
 {
@@ -196,6 +203,38 @@ else
         await LoadTickets();
     }
 
+    private async Task CreateNewTicket()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        var ticket = new WorkTicket
+        {
+            TicketNumber = string.Empty, // Initialize to empty string to prevent NullReferenceException in form
+            CostCentre = string.Empty,
+            Activity = string.Empty,
+            OperatorName = string.Empty,
+            MaterialUsed = string.Empty,
+            StartDateTime = string.Empty,
+            EndDateTime = string.Empty,
+            DT = string.Empty,
+            CreatedBy = string.Empty
+        };
+
+        // Pre-populate operator if not Admin
+        if (!user.IsInRole("Admin"))
+        {
+            ticket.OperatorName = user.Identity?.Name ?? string.Empty;
+        }
+        
+        editingTicket = ticket;
+        editingTicketNumber = "NEW";
+
+        // Clear stacks for new item
+        undoStack.Clear();
+        redoStack.Clear();
+    }
+
     private void EditTicket(string? ticketNumber)
     {
         if (ticketNumber == null) return;
@@ -240,7 +279,16 @@ else
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
             var updatedByUser = user.Identity?.Name ?? "Unknown";
-            await TicketService.UpdateTicketAsync(editingTicket, updatedByUser);
+            
+            if (editingTicket.Id == 0)
+            {
+                editingTicket.CreatedBy = updatedByUser;
+                await TicketService.CreateWorkTicketAsync(editingTicket);
+            }
+            else
+            {
+                await TicketService.UpdateTicketAsync(editingTicket, updatedByUser);
+            }
             
             // Refresh list
             await LoadTickets();
