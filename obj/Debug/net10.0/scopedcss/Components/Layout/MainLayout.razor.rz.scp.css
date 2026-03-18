@@ -1,51 +1,23 @@
+/* Make the main page container at least the full height of the viewport.
+   This ensures there's always enough vertical space to push the footer down. */
 .page[b-vxssyt4gcv] {
     position: relative;
     display: flex;
     flex-direction: column;
-    font-family: "Roboto", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
 }
 
+/* Make the main content area a column-based flex container. */
 main[b-vxssyt4gcv] {
-    flex: 1;
-    background-color: #F6F1F1;
-}
-
-.sidebar[b-vxssyt4gcv] {
-    background-color: #146C94;
-}
-
-.top-row[b-vxssyt4gcv] {
-    background-color: #F6F1F1;
-    border-bottom: 1px solid #AFD3E2;
-    justify-content: flex-end;
-    height: 3.5rem;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    flex-grow: 1; /* Allows the main area to grow and fill space. */
+    background-color: #f8f9fa; /* Light gray background for content area */
 }
 
-    .top-row[b-vxssyt4gcv]  a, .top-row[b-vxssyt4gcv]  .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
-
-    .top-row[b-vxssyt4gcv]  a:hover, .top-row[b-vxssyt4gcv]  .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .top-row[b-vxssyt4gcv]  a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-@media (max-width: 640.98px) {
-    .top-row[b-vxssyt4gcv] {
-        justify-content: space-between;
-    }
-
-    .top-row[b-vxssyt4gcv]  a, .top-row[b-vxssyt4gcv]  .btn-link {
-        margin-left: 0;
-    }
+/* Make the content article grow, pushing the footer to the bottom. */
+.content[b-vxssyt4gcv] {
+    flex-grow: 1;
 }
 
 @media (min-width: 641px) {
@@ -54,111 +26,13 @@ main[b-vxssyt4gcv] {
     }
 
     .sidebar[b-vxssyt4gcv] {
-        width: 250px;
+        width: 280px;
         height: 100vh;
         position: sticky;
         top: 0;
+        background-color: #1a202c; /* Dark professional sidebar */
+        color: white;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        z-index: 1000;
     }
-
-    .top-row[b-vxssyt4gcv] {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-
-    .top-row.auth[b-vxssyt4gcv]  a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
-    }
-
-    .top-row[b-vxssyt4gcv], article[b-vxssyt4gcv] {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
-    }
-}
-
-#blazor-error-ui[b-vxssyt4gcv] {
-    background: lightyellow;
-    bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    display: none;
-    left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-}
-
-    #blazor-error-ui .dismiss[b-vxssyt4gcv] {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
-
-main[b-vxssyt4gcv]  h1, main[b-vxssyt4gcv]  h2, main[b-vxssyt4gcv]  h3 {
-    color: #2580bd;
-    font-weight: 700;
-}
-
-main[b-vxssyt4gcv]  p, main[b-vxssyt4gcv]  label, main[b-vxssyt4gcv]  .form-label {
-    font-weight: 300;
-    color: #212529;
-}
-
-main[b-vxssyt4gcv]  .btn-primary {
-    background-color: #19A7CE;
-    border-color: #19A7CE;
-    color: #F6F1F1;
-    font-weight: 500;
-}
-
-main[b-vxssyt4gcv]  .btn-primary:hover, main[b-vxssyt4gcv]  .btn-primary:active, main[b-vxssyt4gcv]  .btn-primary:focus {
-    background-color: #146C94;
-    border-color: #146C94;
-}
-
-main[b-vxssyt4gcv]  .btn-secondary {
-    background-color: #AFD3E2;
-    border-color: #AFD3E2;
-    color: #146C94;
-    font-weight: 500;
-}
-
-main[b-vxssyt4gcv]  .btn-secondary:hover, main[b-vxssyt4gcv]  .btn-secondary:active, main[b-vxssyt4gcv]  .btn-secondary:focus {
-    background-color: #19A7CE;
-    border-color: #19A7CE;
-    color: #F6F1F1;
-}
-
-main[b-vxssyt4gcv]  .form-control, main[b-vxssyt4gcv]  .form-select {
-    border: 1px solid #AFD3E2;
-    color: #146C94;
-    background-color: #ffffff;
-}
-
-main[b-vxssyt4gcv]  .form-control:focus, main[b-vxssyt4gcv]  .form-select:focus {
-    border-color: #19A7CE;
-    box-shadow: 0 0 0 0.25rem rgba(25, 167, 206, 0.25);
-    color: #146C94;
-}
-
-main[b-vxssyt4gcv]  .card {
-    border: 1px solid #AFD3E2;
-    background-color: #ffffff;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(20, 108, 148, 0.1);
-}
-
-main[b-vxssyt4gcv]  .card-header {
-    background-color: #AFD3E2;
-    color: #ffffff;
-    font-weight: 500;
-    border-bottom: 1px solid #19A7CE;
-}
-
-main[b-vxssyt4gcv]  .card-title {
-    color: #146C94;
-    font-weight: 700;
 }
