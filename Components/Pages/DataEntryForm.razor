@@ -10,9 +10,8 @@
 @inject ModalService Modal
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
-@page "/work-tickets"
 
-<h3 class="text-primary mb-4">📑 Saved Work Tickets</h3>
+<h3 class="text-primary mb-4">📑 Work Ticket Management</h3>
 
 <div class="row mb-4">
     <div class="col-md-6">
@@ -22,31 +21,14 @@
             <button class="btn btn-outline-primary" @onclick="SearchTickets">Search</button>
         </div>
     </div>
+    <div class="col-md-6 text-end">
+        <a href="/tickets/new" class="btn btn-success"><i class="fas fa-plus"></i> Create New Ticket</a>
+    </div>
 </div>
 
 @if (tickets == null || tickets.Count == 0)
 {
     <div class="alert alert-info">No work tickets have been saved yet.</div>
-}
-else if (editingTicketNumber != null)
-{
-    <div class="card p-4 mb-4">
-        <h4>Edit Work Ticket: @editingTicketNumber</h4>
-        <EditForm Model="@editingTicket" OnValidSubmit="SaveChanges">
-            <button type="button" class="btn btn-warning" @onclick="Undo">Undo</button>
-            <button type="button" class="btn btn-info" @onclick="Redo">Redo</button>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" />
-
-            
-            <WorkTicketForm Model="editingTicket" />
-
-            <div class="mt-3">
-                <button type="submit" class="btn btn-success">Save Changes</button>
-                <button type="button" class="btn btn-secondary ms-2" @onclick="CancelEdit">Cancel</button>
-            </div>
-        </EditForm>
-    </div>
 }
 else
 {
@@ -85,7 +67,7 @@ else
                     <td>
                         @if (t.TicketNumber is not null)
                         {
-                            <button class="btn btn-sm btn-primary" @onclick="() => EditTicket(t.TicketNumber)">Edit</button>
+                            <a href="@($"/tickets/edit/{t.Id}")" class="btn btn-sm btn-primary">Edit</a>
                             <button class="btn btn-sm btn-danger ms-1" @onclick="() => DeleteTicket(t.Id)">Delete</button>
                         }
                     </td>
@@ -118,8 +100,6 @@ else
     @implements IDisposable
 
     private List<WorkTicket> tickets = new();
-    private string? editingTicketNumber = null;
-    private WorkTicket? editingTicket = null;
     private string searchTerm = "";
     private int currentPage = 1;
     private int pageSize = 10;
@@ -128,8 +108,6 @@ else
     private string sortBy = "DT";
     private bool sortAscending = false;
     private CancellationTokenSource _searchCts = new();
-    private Stack<string> undoStack = new Stack<string>();
-    private Stack<string> redoStack = new Stack<string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,59 +174,6 @@ else
         await LoadTickets();
     }
 
-    private void EditTicket(string? ticketNumber)
-    {
-        if (ticketNumber == null) return;
-        
-        var ticket = tickets.FirstOrDefault(t => t.TicketNumber == ticketNumber);
-        if (ticket != null)
-        {
-            editingTicketNumber = ticketNumber;
-            
-            // Create a copy for editing
-            editingTicket = new WorkTicket
-            {
-                Id = ticket.Id,
-                TicketNumber = ticket.TicketNumber,
-                CostCentre = ticket.CostCentre,
-                Activity = ticket.Activity,
-                OperatorName = ticket.OperatorName,
-                NumOperators = ticket.NumOperators,
-                StartCounter = ticket.StartCounter,
-                EndCounter = ticket.EndCounter,
-                QuantityIn = ticket.QuantityIn,
-                QuantityOut = ticket.QuantityOut,
-                MaterialUsed = ticket.MaterialUsed,
-                DT = ticket.DT,
-                StartDateTime = ticket.StartDateTime,
-                EndDateTime = ticket.EndDateTime,
-                CreatedBy = ticket.CreatedBy,
-                CreatedAt = ticket.CreatedAt,
-                UpdatedBy = ticket.UpdatedBy,
-                UpdatedAt = ticket.UpdatedAt
-            };
-
-           
-            PushToUndoStack();
-        }
-    }
-
-    private async Task SaveChanges()
-    {
-        if (editingTicket != null)
-        {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            var updatedByUser = user.Identity?.Name ?? "Unknown";
-            await TicketService.UpdateTicketAsync(editingTicket, updatedByUser);
-            
-            // Refresh list
-            await LoadTickets();
-            ClearRedoStack();
-        }
-        CancelEdit();
-    }
-
     private string? FormatDate(string? isoDate)
     {
         if (string.IsNullOrEmpty(isoDate))
@@ -260,12 +185,6 @@ else
             return date.ToString("MM/dd/yyyy HH:mm");
         }
         return isoDate; // Fallback to original string if parsing fails
-    }
-
-    private void CancelEdit()
-    {
-        editingTicketNumber = null;
-        editingTicket = null;
     }
 
     private async Task DeleteTicket(int id)
@@ -288,48 +207,4 @@ else
         _searchCts.Cancel();
         _searchCts.Dispose();
     }
-
-    private void PushToUndoStack()
-    {
-        if (editingTicket != null)
-        {
-            string serializedTicket = JsonSerializer.Serialize(editingTicket);
-            undoStack.Push(serializedTicket);
-            redoStack.Clear();
-        }
-    }
-
-    private async Task Undo()
-    {
-        if (undoStack.Count > 0)
-        {
-            string serializedTicket = undoStack.Pop();
-            if (editingTicket != null)
-            {
-                string currentTicket = JsonSerializer.Serialize(editingTicket);
-                redoStack.Push(currentTicket);
-                editingTicket = JsonSerializer.Deserialize<WorkTicket>(serializedTicket);
-            }
-        }
-    }
-
-    private async Task Redo()
-    {
-        if (redoStack.Count > 0)
-        {
-            string serializedTicket = redoStack.Pop();
-            if (editingTicket != null)
-            {
-                string currentTicket = JsonSerializer.Serialize(editingTicket);
-                undoStack.Push(currentTicket);
-                editingTicket = JsonSerializer.Deserialize<WorkTicket>(serializedTicket);
-            }
-        }
-    }
-
-    private void ClearRedoStack()
-    {
-        redoStack.Clear();
-    }
-
 }

@@ -98,7 +98,7 @@ main {
     }
 
 main ::deep h1, main ::deep h2, main ::deep h3 {
-    color: #146C94;
+    color: #2580bd;
     font-weight: 700;
 }
 
@@ -153,7 +153,7 @@ main ::deep .card {
 
 main ::deep .card-header {
     background-color: #AFD3E2;
-    color: #146C94;
+    color: #ffffff;
     font-weight: 500;
     border-bottom: 1px solid #19A7CE;
 }

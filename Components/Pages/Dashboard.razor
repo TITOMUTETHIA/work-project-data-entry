@@ -25,28 +25,26 @@ else
 {
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card text-white bg-primary mb-3">
-                <div class="card-header">Total Tickets</div>
-                <div class="card-body">
-                    <h2 class="card-title">@metrics.TotalTickets</h2>
+            <div class="card border-primary mb-3">
+                <div class="card-body text-primary">
+                    <h5 class="card-title">Total Tickets</h5>
+                    <p class="card-text display-4">@metrics.TotalTickets</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
-                <div class="card-header">Active Tickets</div>
-                <div class="card-body">
-                    <h2 class="card-title">@metrics.ActiveTickets</h2>
-                    <p class="card-text">Tickets currently in progress</p>
+            <div class="card border-warning mb-3">
+                <div class="card-body text-warning">
+                    <h5 class="card-title">Active Tickets</h5>
+                    <p class="card-text display-4">@metrics.ActiveTickets</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-white bg-info mb-3">
-                <div class="card-header">Last 7 Days</div>
-                <div class="card-body">
-                    <h2 class="card-title">@metrics.TicketsCreatedLast7Days</h2>
-                    <p class="card-text">New tickets created</p>
+            <div class="card border-success mb-3">
+                <div class="card-body text-success">
+                    <h5 class="card-title">Last 7 Days</h5>
+                    <p class="card-text display-4">@metrics.TicketsCreatedLast7Days</p>
                 </div>
             </div>
         </div>

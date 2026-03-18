@@ -58,16 +58,16 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEYXNoYm9hcmQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/DataEntry.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEYXRhRW50cnkucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/DataEntryForm.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEYXRhRW50cnlGb3JtLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/DataGrid.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEYXRhR3JpZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/EditTicket.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFZGl0VGlja2V0LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/Error.razor]
@@ -82,12 +82,20 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMb2dpbi5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/NewTicket.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xOZXdUaWNrZXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/Register.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSZWdpc3Rlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/SortableHeader.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xTb3J0YWJsZUhlYWRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/TicketEditor.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xUaWNrZXRFZGl0b3IucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/ADMIN/OneDrive - Chrome Partners/Desktop/tito/super app/work-project-data-entry/Components/Pages/UserManagement.razor]

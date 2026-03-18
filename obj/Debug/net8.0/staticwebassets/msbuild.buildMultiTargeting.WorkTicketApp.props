@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/WorkTicketApp.props" />
-</Project>

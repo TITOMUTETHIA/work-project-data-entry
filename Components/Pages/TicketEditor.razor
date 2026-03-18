@@ -1,0 +1,123 @@
+@page "/tickets/new"
+@page "/tickets/edit/{Id:int}"
+
+@using WorkTicketApp.Models
+@using WorkTicketApp.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject IWorkTicketService TicketService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsNewTicket ? "New Work Ticket" : $"Edit Ticket: {Model.TicketNumber}")</PageTitle>
+
+<h3>@(IsNewTicket ? "Create New Work Ticket" : $"Editing Ticket: {Model.TicketNumber}")</h3>
+
+@if (Model is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card p-4 mt-4">
+        <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="TicketEditorForm">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger mb-3" />
+
+            <WorkTicketForm Model="Model" />
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">@(IsNewTicket ? "Create Ticket" : "Save Changes")</button>
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+            </div>
+        </EditForm>
+
+        @if (!IsNewTicket)
+        {
+            <div class="mt-5 p-3 bg-light rounded border">
+                <h5 class="text-muted">Audit Information</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1">
+                            <strong>Created By:</strong>
+                            <span class="text-muted">@Model.CreatedBy</span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Created At:</strong>
+                            <span class="text-muted">@Model.CreatedAt.ToLocalTime().ToString("g")</span>
+                        </p>
+                    </div>
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Last Updated By:</strong> <span class="text-muted">@Model.UpdatedBy</span></p>
+                            <p class="mb-0"><strong>Last Updated At:</strong> <span class="text-muted">@Model.UpdatedAt.Value.ToLocalTime().ToString("g")</span></p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private WorkTicket Model { get; set; } = new();
+    private bool IsNewTicket => Id == 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsNewTicket)
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            Model = new WorkTicket
+            {
+                TicketNumber = string.Empty,
+                CostCentre = string.Empty,
+                Activity = string.Empty,
+                OperatorName = user.IsInRole("Admin") ? string.Empty : user.Identity?.Name ?? string.Empty,
+                MaterialUsed = string.Empty,
+                StartDateTime = string.Empty,
+                EndDateTime = string.Empty,
+                DT = string.Empty,
+                CreatedBy = string.Empty
+            };
+        }
+        else
+        {
+            Model = await TicketService.GetTicketByIdAsync(Id) ?? new();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var updatedByUser = user.Identity?.Name ?? "Unknown";
+
+        if (IsNewTicket)
+        {
+            Model.CreatedBy = updatedByUser;
+            await TicketService.CreateWorkTicketAsync(Model);
+        }
+        else
+        {
+            await TicketService.UpdateTicketAsync(Model, updatedByUser);
+        }
+
+        Navigation.NavigateTo("/tickets");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/tickets");
+    }
+}

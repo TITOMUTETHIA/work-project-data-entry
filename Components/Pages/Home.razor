@@ -1,134 +1,47 @@
 ﻿@page "/"
-@using WorkTicketApp.Models
-@using WorkTicketApp.Services
 @inject IWorkTicketService TicketService
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>Home</PageTitle>
 
-<div class="container-fluid">
+<div class="container mt-4">
     <h1 class="mb-4">Dashboard</h1>
 
-    @if (metrics == null)
+    @if (metrics is null)
     {
         <div class="d-flex justify-content-center">
-            <div class="spinner-border" role="status">
+            <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
         </div>
     }
     else
     {
-        <div class="row mb-4">
-            <div class="col-md-6 col-lg-3">
-                <div class="card bg-primary text-white mb-3">
-                    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card border-primary mb-3">
+                    <div class="card-body text-primary">
                         <h5 class="card-title">Total Tickets</h5>
                         <p class="card-text display-4">@metrics.TotalTickets</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-3">
-                <div class="card bg-success text-white mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">Last 7 Days</h5>
+            
+            <div class="col-md-4">
+                <div class="card border-success mb-3">
+                    <div class="card-body text-success">
+                        <h5 class="card-title">Active Tickets</h5>
+                        <p class="card-text display-4">@metrics.ActiveTickets</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-info mb-3">
+                    <div class="card-body text-info">
+                        <h5 class="card-title">New (Last 7 Days)</h5>
                         <p class="card-text display-4">@metrics.TicketsCreatedLast7Days</p>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        Tickets by Cost Centre
-                    </div>
-                    <div class="card-body">
-                        @if (metrics.TicketsByCostCentre.Any())
-                        {
-                            <ul class="list-group list-group-flush">
-                                @foreach (var item in metrics.TicketsByCostCentre)
-                                {
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        @item.Label
-                                        <span class="badge bg-primary rounded-pill">@item.Value</span>
-                                    </li>
-                                }
-                            </ul>
-                        }
-                        else
-                        {
-                            <p class="text-muted">No data available.</p>
-                        }
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        Tickets by Operator
-                    </div>
-                    <div class="card-body">
-                        @if (metrics.TicketsByOperator.Any())
-                        {
-                            <ul class="list-group list-group-flush">
-                                @foreach (var item in metrics.TicketsByOperator)
-                                {
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        @item.Label
-                                        <span class="badge bg-primary rounded-pill">@item.Value</span>
-                                    </li>
-                                }
-                            </ul>
-                        }
-                        else
-                        {
-                            <p class="text-muted">No data available.</p>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="row">
-            <div class="col-12">
-                 <div class="card">
-                    <div class="card-header">
-                        Recent Tickets
-                    </div>
-                    <div class="card-body">
-                        @if (recentTickets != null && recentTickets.Any())
-                        {
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Ticket #</th>
-                                            <th>Activity</th>
-                                            <th>Operator</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var ticket in recentTickets)
-                                        {
-                                            <tr>
-                                                <td>@ticket.TicketNumber</td>
-                                                <td>@ticket.Activity</td>
-                                                <td>@ticket.OperatorName</td>
-                                                <td>@FormatDate(ticket.DT)</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                        else
-                        {
-                            <p>No recent tickets found.</p>
-                        }
-                    </div>
-                 </div>
             </div>
         </div>
     }
@@ -136,24 +49,9 @@
 
 @code {
     private DashboardMetricsDto? metrics;
-    private List<WorkTicket>? recentTickets;
 
     protected override async Task OnInitializedAsync()
     {
         metrics = await TicketService.GetDashboardMetricsAsync();
-        
-        // Fetch recent tickets (Top 5 sorted by DT descending)
-        var pagedResult = await TicketService.GetWorkTicketsAsync(1, 5, null, "DT", false);
-        recentTickets = pagedResult.Items;
-    }
-
-    private string? FormatDate(string? isoDate)
-    {
-        if (string.IsNullOrEmpty(isoDate)) return null;
-        if (DateTime.TryParse(isoDate, null, System.Globalization.DateTimeStyles.RoundtripKind, out var date))
-        {
-            return date.ToString("MM/dd/yyyy HH:mm");
-        }
-        return isoDate;
     }
 }
