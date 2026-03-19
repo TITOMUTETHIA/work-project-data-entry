@@ -9,15 +9,18 @@ public class WorkTicketService : IWorkTicketService
     private readonly IDbContextFactory<ApplicationDbContext> _factory;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IAuditLogService _auditLogService;
+    private readonly ILogger<WorkTicketService> _logger;
 
     public WorkTicketService(
         IDbContextFactory<ApplicationDbContext> factory,
         IHttpContextAccessor httpContextAccessor,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        ILogger<WorkTicketService> logger)
     {
         _factory = factory;
         _httpContextAccessor = httpContextAccessor;
         _auditLogService = auditLogService;
+        _logger = logger;
     }
 
     public async Task<PagedResult<WorkTicket>> GetWorkTicketsAsync(int pageNumber, int pageSize, string? searchTerm = null, string? sortBy = null, bool sortAscending = true, DateTime? startDate = null, DateTime? endDate = null)
@@ -156,11 +159,30 @@ public class WorkTicketService : IWorkTicketService
         var ticket = await context.WorkTickets.FirstOrDefaultAsync(t => t.Id == id);
         if (ticket != null)
         {
-            context.WorkTickets.Remove(ticket);
-            await context.SaveChangesAsync();
+            try
+            {
+                var performedBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "System";
+                var ticketNumber = ticket.TicketNumber; // Capture details for logging before deletion.
+
+                context.WorkTickets.Remove(ticket);
+                await context.SaveChangesAsync();
+
+                // Log the successful deletion to the audit trail.
+                await _auditLogService.LogAsync(performedBy, "Work Ticket Deleted", ticketNumber, $"Deleted ticket with ID {id} and number '{ticketNumber}'.");
+                _logger.LogInformation("Successfully deleted work ticket with ID {TicketId}", id);
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error occurred while deleting work ticket with ID {TicketId}.", id);
+                // Re-throw the exception to let the calling layer know about the failure.
+                throw;
+            }
+        }
+        else
+        {
+            _logger.LogWarning("Attempted to delete a non-existent work ticket with ID {TicketId}.", id);
         }
     }
-
     public async Task<DashboardMetricsDto> GetDashboardMetricsAsync(string? username = null)
     {
         await using var context = await _factory.CreateDbContextAsync();

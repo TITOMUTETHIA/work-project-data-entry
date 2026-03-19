@@ -1,13 +1,12 @@
-﻿﻿@using Microsoft.AspNetCore.Components.Routing
+﻿﻿﻿﻿@using Microsoft.AspNetCore.Components.Routing
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">WorkTicketApp</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
     </div>
 </div>
-
-<button class="navbar-toggler" @onclick="ToggleNavMenu">
-    <span class="navbar-toggler-icon"></span>
-</button>
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
@@ -22,7 +21,7 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="tickets">
+            <NavLink class="nav-link" href="tickets" Match="NavLinkMatch.All">
                 <i class="fas fa-ticket-alt" aria-hidden="true"></i> Work Tickets
             </NavLink>
         </div>
@@ -33,12 +32,14 @@
         </div>
         <div class="nav-item px-3">
             <AuthorizeView Roles="Admin">
-                <NavLink class="nav-link" href="users">
-                    <i class="fas fa-users-cog" aria-hidden="true"></i> User Management
-                </NavLink>
-                <NavLink class="nav-link" href="audit-logs">
-                    <i class="fas fa-history" aria-hidden="true"></i> Audit Logs
-                </NavLink>
+                <Authorized>
+                    <NavLink class="nav-link" href="users">
+                        <i class="fas fa-users-cog" aria-hidden="true"></i> User Management
+                    </NavLink>
+                    <NavLink class="nav-link" href="audit-logs">
+                        <i class="fas fa-history" aria-hidden="true"></i> Audit Logs
+                    </NavLink>
+                </Authorized>
             </AuthorizeView>
         </div>
     </nav>
